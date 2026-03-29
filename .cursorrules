@@ -1,0 +1,475 @@
+# EALHO THERAPY — CURSOR RULES
+# Read this entire file before writing any code.
+# This file is for the Ealho Therapy project ONLY.
+
+---
+
+## 1. WHO YOU ARE BUILDING FOR
+
+Ealho Therapy (ealhohq.com)
+- AI-powered therapy booking and session platform for Nigerian patients and therapists
+- Patients book sessions with or without an account
+- Therapists manage availability, join video sessions, review AI-generated SOAP notes
+- Mobile-first: all patient-facing screens designed at 375px width first
+- Primary users are on mobile, Nigerian network conditions, mid-range Android devices
+- WhatsApp is the primary notification channel — more important than email for Nigerian users
+
+This is NOT Ealho Notes AI.
+Do not build API key management, enterprise dashboards, AssemblyAI, Recall.ai,
+FHIR output, Stripe billing, or organization hierarchies in this project.
+
+---
+
+## 2. TECH STACK — NEVER DEVIATE FROM THIS
+
+Frontend
+- Framework: Next.js 14 with App Router — always App Router, never Pages Router
+- Language: TypeScript — always, no plain JavaScript files ever
+- Styling: Tailwind CSS — utility classes only, no CSS modules, no styled-components
+- UI Components: shadcn/ui — use existing components before building custom ones
+- Animations: Framer Motion — for transitions and mobile micro-interactions
+- Forms: React Hook Form + Zod — always validate with Zod schemas
+- State: Zustand — global state only, use React state for local component state
+- Data Fetching: TanStack Query — for all server state, loading states, and caching
+
+Backend
+- Framework: FastAPI (Python) — async endpoints only, always use async def
+- Background Jobs: Celery + Redis — all async tasks (note generation, PDF export)
+- PDF Generation: WeasyPrint — always queue via Celery, store in Supabase Storage, return signed URL
+- AI Notes: Claude API primary (claude-sonnet-4-20250514), DeepSeek fallback
+- DB Client in FastAPI: Supabase Python client — never SQLAlchemy
+
+Database
+- Database: Supabase (Postgres)
+- ORM: Prisma — all schema changes via Prisma schema file only
+- Migrations: Prisma Migrate — npx prisma migrate dev always, never manual SQL schema changes
+- Caching and Slot Locking: Upstash Redis
+- Security: Supabase RLS — every table must have RLS policies
+
+Database Schema Separation
+supabase/
+├── schemas/
+│   ├── therapy/    # patients, bookings, sessions, availability, therapists
+│   └── shared/     # profiles, subscriptions
+
+Auth
+- Provider: Supabase Auth — never build custom auth from scratch
+- Route Protection: Next.js Middleware — always check role in middleware first
+- Roles: patient, therapist, admin
+- Role Storage: custom claims in JWT via Supabase app_metadata — never store role only on frontend
+- Guest Booking: signed one-time JWT tokens — no Supabase session required
+- Therapist Status: separate from role — pending / approved / rejected / suspended
+- Token Storage: HttpOnly cookies only — never localStorage, never sessionStorage
+- One login page at /login for all roles — role determines redirect after login
+
+Login Routes
+/login              → one page, all roles log in here
+/signup             → patient self-registration
+/therapist/enroll   → therapist application (separate multi-step form)
+/admin/login        → admin only, not linked publicly
+
+Role Redirects After Login
+patient   → /dashboard
+therapist → /therapist/dashboard
+admin     → /admin/dashboard
+
+Video and Communication
+- Video: Agora Web SDK — no Daily.co, no Zoom SDK, no Google Meet ever
+- Transcription: Agora native transcription — no Whisper, no separate recording tool
+- Email: Resend — all transactional emails
+- WhatsApp: WhatsApp Business API — primary notification channel
+
+Payments
+- Paystack only — NGN payments
+- Never use Stripe in this project
+- Use Paystack modal for checkout — never build custom payment UI
+- Slot locking: Upstash Redis with 10-minute TTL during Paystack checkout
+
+Hosting
+- Frontend: Netlify — auto-deploy from GitHub
+- Backend: DigitalOcean App Platform — $12/mo basic tier
+- Never suggest Vercel, Railway, or Render
+
+Error Tracking
+- Sentry — wrap all API routes and critical functions
+
+---
+
+## 3. FOLDER STRUCTURE — ALWAYS FOLLOW THIS
+
+Next.js Frontend
+ealhohq/
+├── app/
+│   ├── (public)/
+│   │   ├── page.tsx
+│   │   ├── book/
+│   │   │   ├── page.tsx
+│   │   │   ├── [therapistId]/
+│   │   │   │   └── page.tsx
+│   │   │   └── confirm/
+│   │   │       └── page.tsx
+│   │   └── session/
+│   │       └── join/
+│   │           └── page.tsx
+│   ├── (auth)/
+│   │   ├── login/
+│   │   │   └── page.tsx
+│   │   ├── signup/
+│   │   │   └── page.tsx
+│   │   ├── verify/
+│   │   │   └── page.tsx
+│   │   └── therapist/
+│   │       └── enroll/
+│   │           └── page.tsx
+│   ├── (patient)/
+│   │   ├── dashboard/
+│   │   │   └── page.tsx
+│   │   ├── sessions/
+│   │   │   └── page.tsx
+│   │   ├── history/
+│   │   │   └── page.tsx
+│   │   └── profile/
+│   │       └── page.tsx
+│   ├── (therapist)/
+│   │   ├── dashboard/
+│   │   │   └── page.tsx
+│   │   ├── pending/
+│   │   │   └── page.tsx
+│   │   ├── sessions/
+│   │   │   ├── page.tsx
+│   │   │   └── [sessionId]/
+│   │   │       ├── page.tsx
+│   │   │       └── post-session/
+│   │   │           └── page.tsx
+│   │   ├── clients/
+│   │   │   ├── page.tsx
+│   │   │   └── [clientId]/
+│   │   │       └── page.tsx
+│   │   ├── availability/
+│   │   │   └── page.tsx
+│   │   └── earnings/
+│   │       └── page.tsx
+│   └── (admin)/
+│       ├── dashboard/
+│       │   └── page.tsx
+│       ├── therapists/
+│       │   └── page.tsx
+│       └── users/
+│           └── page.tsx
+├── components/
+│   ├── ui/
+│   ├── landing/
+│   │   ├── Navbar.tsx
+│   │   ├── Hero.tsx
+│   │   ├── SocialProof.tsx
+│   │   ├── TherapyPackages.tsx
+│   │   ├── TherapistTeam.tsx
+│   │   ├── NotesAI.tsx
+│   │   ├── FAQ.tsx
+│   │   ├── BurnoutCTA.tsx
+│   │   └── Footer.tsx
+│   ├── booking/
+│   │   ├── TherapistCard.tsx
+│   │   ├── AvailabilityCalendar.tsx
+│   │   ├── SlotPicker.tsx
+│   │   ├── GuestDetailsForm.tsx
+│   │   ├── ConsentCheckbox.tsx
+│   │   └── PaystackButton.tsx
+│   ├── session/
+│   │   ├── AgoraVideoCall.tsx
+│   │   ├── EndSessionButton.tsx
+│   │   └── SessionTimer.tsx
+│   ├── notes/
+│   │   ├── SoapNoteDisplay.tsx
+│   │   ├── SoapNoteEditor.tsx
+│   │   └── IntakeAssessmentDisplay.tsx
+│   ├── availability/
+│   │   ├── WeeklyScheduleEditor.tsx
+│   │   ├── DateOverrideManager.tsx
+│   │   └── AvailabilityPreview.tsx
+│   └── shared/
+│       ├── MobileNav.tsx
+│       ├── LoadingSpinner.tsx
+│       └── ErrorBoundary.tsx
+├── lib/
+│   ├── supabase/
+│   │   ├── client.ts
+│   │   └── server.ts
+│   ├── prisma/
+│   │   └── client.ts
+│   ├── agora/
+│   │   ├── client.ts
+│   │   └── transcription.ts
+│   ├── paystack/
+│   │   └── client.ts
+│   ├── availability/
+│   │   └── slots.ts
+│   └── utils.ts
+├── hooks/
+│   ├── useAvailableSlots.ts
+│   ├── useSession.ts
+│   └── useAuth.ts
+├── stores/
+│   ├── authStore.ts
+│   ├── bookingStore.ts
+│   └── sessionStore.ts
+├── types/
+│   ├── auth.ts
+│   ├── booking.ts
+│   ├── session.ts
+│   └── notes.ts
+├── middleware.ts
+├── prisma/
+│   └── schema.prisma
+└── .env.local
+
+FastAPI Backend
+ealhohq-api/
+├── app/
+│   ├── main.py
+│   ├── routes/
+│   │   ├── sessions.py
+│   │   ├── bookings.py
+│   │   ├── availability.py
+│   │   ├── notes.py
+│   │   └── auth.py
+│   ├── services/
+│   │   ├── claude.py
+│   │   ├── deepseek.py
+│   │   ├── agora.py
+│   │   ├── pdf.py
+│   │   ├── paystack.py
+│   │   ├── resend.py
+│   │   └── whatsapp.py
+│   ├── middleware/
+│   │   └── auth.py
+│   ├── tasks/
+│   │   ├── celery.py
+│   │   ├── note_tasks.py
+│   │   └── pdf_tasks.py
+│   ├── prompts/
+│   │   ├── therapy_intake.txt
+│   │   ├── therapy_soap.txt
+│   │   └── templates.py
+│   └── db/
+│       └── supabase.py
+├── .env
+├── requirements.txt
+├── Dockerfile
+└── README.md
+
+---
+
+## 4. AUTHENTICATION RULES
+
+Golden Rules
+1. Role lives in JWT app_metadata — never trust role from request body
+2. Always check role in middleware BEFORE rendering any page
+3. Always enforce RLS at database level — frontend checks are UI only
+4. Always check therapist status = approved separately from role = therapist
+5. Never store JWT in localStorage — HttpOnly cookies only
+6. Guest bookings have zero auth — public endpoints only
+7. Guest session access via signed one-time token in URL — expires at session end time
+
+Middleware Pattern
+export async function middleware(req: NextRequest) {
+  const supabase = createMiddlewareClient({ req, res })
+  const { data: { session } } = await supabase.auth.getSession()
+  const role = session?.user?.app_metadata?.role
+  const status = session?.user?.app_metadata?.status
+  const path = req.nextUrl.pathname
+
+  if (!session && isProtectedPath(path)) {
+    return NextResponse.redirect(new URL('/login', req.url))
+  }
+  if (role === 'therapist' && status === 'pending' && path.startsWith('/therapist/dashboard')) {
+    return NextResponse.redirect(new URL('/therapist/pending', req.url))
+  }
+  if (role === 'patient' && path.startsWith('/therapist')) {
+    return NextResponse.redirect(new URL('/dashboard', req.url))
+  }
+  if (role === 'therapist' && path.startsWith('/admin')) {
+    return NextResponse.redirect(new URL('/therapist/dashboard', req.url))
+  }
+}
+
+---
+
+## 5. DATABASE RULES
+
+Prisma Rules
+- Always define all models in prisma/schema.prisma
+- Never write raw SQL for schema changes
+- Always run npx prisma migrate dev after schema changes
+- Always run npx prisma generate after schema changes
+- Use @db.Uuid for all ID fields
+- Use @default(now()) for createdAt and updatedAt
+
+Key Tables
+therapy.patients
+therapy.therapists              with status: pending/approved/rejected/suspended
+therapy.bookings                supports both guest and registered patients
+therapy.sessions
+therapy.session_notes           SOAP notes — therapist access only via RLS
+therapy.availability_schedule   weekly recurring schedule
+therapy.availability_overrides  date-specific overrides
+therapy.credits
+shared.profiles                 extends Supabase auth.users
+
+RLS Rules
+- Every table must have RLS enabled — no exceptions
+- Therapists read and write own sessions and notes only
+- Patients read and write own bookings and profile only
+- Admins have full read access, limited write access
+- SOAP notes: therapist-only — patients have zero access under any circumstance
+
+---
+
+## 6. AVAILABILITY SYSTEM RULES
+
+- All times stored and displayed in WAT (West Africa Time, UTC+1)
+- Slot locking: Upstash Redis with 10-minute TTL during Paystack checkout
+- Never double-book: check Redis lock AND database before confirming slot
+- Slot generation: start_time + (session_duration + buffer) * n until end_time
+- Always check availability_overrides before availability_schedule
+- Booking window: default 4 weeks maximum
+- Minimum notice: default 2 hours before session
+- Never use Google Calendar API — built-in system only
+- Never use Cal.com — built-in system only
+
+---
+
+## 7. SOAP NOTE GENERATION RULES
+
+Model Priority
+async def generate_note(transcript, session_data, specialty="therapy", note_type="soap"):
+    try:
+        return await generate_with_claude(transcript, template, session_data)
+    except Exception as e:
+        log_to_sentry(e, level="warning")
+        try:
+            result = await generate_with_deepseek(transcript, template, session_data)
+            result["_generated_by"] = "deepseek"
+            return result
+        except Exception as e2:
+            log_to_sentry(e2, level="error")
+            raise HTTPException(status_code=503, detail="Note generation unavailable")
+
+Claude Rules
+- Always use claude-sonnet-4-20250514 — never change the model
+- max_tokens: 4000 for intake assessment, 2000 for SOAP note
+- Always parse response as JSON — validate against Pydantic schema before saving
+- Always instruct Claude: use client_id or initials only — never full patient name
+- Always instruct Claude: write "Not reported" for missing info — never invent
+- Always require risk assessment section — never omit
+- Delete transcript immediately after note generation is confirmed saved
+
+DeepSeek Rules
+- Use OpenAI-compatible client with DEEPSEEK_BASE_URL
+- Use identical prompt template as Claude — output schema must be identical
+- Use response_format json_object always
+- Never expose to user which model generated the note
+
+Specialty Template System
+TEMPLATES = {
+    "therapy": {
+        "intake": load_prompt("therapy_intake.txt"),
+        "soap": load_prompt("therapy_soap.txt"),
+    },
+}
+
+---
+
+## 8. MOBILE-FIRST RULES
+
+- Design and build all patient-facing components at 375px first
+- Minimum tap target size: 48x48px — no exceptions
+- Bottom navigation bar on mobile for patient dashboard
+- Agora video call: full-screen, minimal UI, end call button at bottom center
+- Paystack: use their modal — never build custom payment UI
+- WhatsApp notifications: always implement alongside email — WhatsApp is primary
+- Use next/image for all images — never raw img tags
+- All images must have explicit width and height to prevent layout shift
+- Single column layouts on mobile — never side-by-side on 375px
+
+---
+
+## 9. API RULES
+
+- Always use async def for all route handlers
+- Always use Pydantic models for request and response validation
+- Always return consistent response structure:
+{
+  "success": True,
+  "data": {},
+  "error": None,
+  "meta": { "timestamp": "..." }
+}
+- Always handle errors with try/except
+- Always log errors to Sentry
+- Never return raw database errors to the client
+
+---
+
+## 10. ENVIRONMENT VARIABLES
+
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+NEXT_PUBLIC_AGORA_APP_ID=
+AGORA_APP_CERTIFICATE=
+ANTHROPIC_API_KEY=
+DEEPSEEK_API_KEY=
+DEEPSEEK_BASE_URL=https://api.deepseek.com
+NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY=
+PAYSTACK_SECRET_KEY=
+RESEND_API_KEY=
+WHATSAPP_API_TOKEN=
+WHATSAPP_PHONE_NUMBER_ID=
+UPSTASH_REDIS_REST_URL=
+UPSTASH_REDIS_REST_TOKEN=
+DATABASE_URL=
+CELERY_BROKER_URL=
+SENTRY_DSN=
+
+---
+
+## 11. WHAT NEVER TO DO IN THIS PROJECT
+
+- Never use localStorage or sessionStorage for auth tokens
+- Never use Daily.co, Zoom SDK, or Google Meet for video
+- Never use Google Calendar API
+- Never use Cal.com
+- Never use SQLAlchemy or Alembic — Prisma only
+- Never use plain JavaScript — TypeScript always
+- Never use CSS modules or styled-components — Tailwind only
+- Never store raw audio recordings at any point
+- Never store patient full name in SOAP note content
+- Never let patients view SOAP notes — therapist only always
+- Never generate PDFs synchronously — always via Celery
+- Never use a Claude model other than claude-sonnet-4-20250514
+- Never write manual SQL for schema changes — Prisma only
+- Never use Vercel, Railway, or Render for hosting
+- Never use Stripe in this project — Paystack only
+- Never use AssemblyAI in this project — Agora transcription only
+- Never use Recall.ai in this project
+- Never use FHIR formatting in this project
+- Never build enterprise API key management in this project
+- Never return role from a user-controlled request body
+- Never skip RLS on any table
+- Never omit risk assessment from any generated note
+- Never invent information in Claude prompts — always "Not reported"
+
+---
+
+## 12. BEFORE WRITING ANY CODE — ALWAYS CHECK
+
+1. Is this a patient-facing screen? If yes — mobile-first at 375px
+2. Does this touch auth? If yes — check middleware + RLS + JWT claims
+3. Does this touch the database? If yes — Prisma schema, RLS enforced
+4. Does this involve note generation? If yes — Claude first, DeepSeek fallback, delete transcript after
+5. Does this involve a background task? If yes — Celery, never synchronous
+6. Does this involve payment? If yes — Paystack only, use their modal
+7. Does this involve video? If yes — Agora only
+8. Does this involve availability? If yes — built-in system, WAT timezone, Redis slot lock
+9. Is this a Notes AI feature? If yes — wrong project, do not build it here
