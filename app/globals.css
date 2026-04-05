@@ -49,20 +49,46 @@
 }
 
 :root {
+  /* Figma node 108:28 — Official Ealho */
+  --ealho-cream: #faf8f5;
+  /* Brand accent fill + text on buttons / primary */
+  --ealho-accent: #292612;
+  --ealho-on-accent: #d6eae1;
+  --ealho-olive: #292612;
+  --ealho-charcoal: #1a1a1a;
+  --ealho-warm-gray: #f5f3f0;
+  --figma-bg-hero: #e8e6dd;
+  --figma-bg-pill: #dddbd0;
+  --figma-text: #24221e;
+  --figma-text-nav: #474433;
+  --figma-text-muted: #5c574e;
+  --figma-accent: #807a5a;
+  --figma-btn: #24221e;
+  --figma-btn-border: #1d1b18;
+  --figma-glass: rgba(221, 219, 208, 0.43);
+  --figma-footer: #3a352c;
+  --figma-footer-card: #706857;
+  --figma-footer-muted: #bebebe;
+  --figma-newsletter-border: #b59568;
+  --figma-package-1: #b59568;
+  --figma-package-2: #626760;
+  --figma-package-3: #857866;
+  --figma-notes-panel: #f8f7f3;
+  --figma-copyright-bar: #e8e6dd;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
+  --primary: #292612;
+  --primary-foreground: #d6eae1;
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
   --muted: oklch(0.97 0 0);
   --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
+  --accent: #292612;
+  --accent-foreground: #d6eae1;
   --destructive: oklch(0.577 0.245 27.325);
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
@@ -90,14 +116,14 @@
   --card-foreground: oklch(0.985 0 0);
   --popover: oklch(0.205 0 0);
   --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
+  --primary: #292612;
+  --primary-foreground: #d6eae1;
   --secondary: oklch(0.269 0 0);
   --secondary-foreground: oklch(0.985 0 0);
   --muted: oklch(0.269 0 0);
   --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
+  --accent: #292612;
+  --accent-foreground: #d6eae1;
   --destructive: oklch(0.704 0.191 22.216);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
@@ -121,10 +147,41 @@
   * {
     @apply border-border outline-ring/50;
   }
-  body {
-    @apply bg-background text-foreground;
-  }
   html {
-    @apply font-sans;
+    @apply scroll-smooth font-sans;
   }
+  body {
+    @apply bg-white text-[var(--figma-text)] antialiased;
+  }
+}
+
+@keyframes ealho-marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes ealho-wave {
+  0%,
+  100% {
+    height: 20%;
+  }
+  50% {
+    height: 100%;
+  }
+}
+
+.animate-ealho-marquee {
+  animation: ealho-marquee 45s linear infinite;
+}
+
+.animate-ealho-marquee:hover {
+  animation-play-state: paused;
+}
+
+.animate-ealho-wave-bar {
+  animation: ealho-wave 0.8s ease-in-out infinite;
 }

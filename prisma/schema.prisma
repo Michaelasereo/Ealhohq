@@ -1,0 +1,414 @@
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ─── ADMIN CONFIG (singleton row id = "default") ──
+
+model AdminAppSettings {
+  id        String   @id
+  payload   Json     @default("{}")
+  updatedAt DateTime @updatedAt
+
+  @@map("admin_app_settings")
+}
+
+model ClinicLead {
+  id         String   @id @default(uuid()) @db.Uuid
+  fullName   String
+  role       String
+  clinicName String
+  city       String
+  teamSize   String
+  interests  String[]
+  whatsapp   String
+  source     String   @default("landing_page")
+  contacted  Boolean  @default(false)
+  notes      String?
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([contacted])
+  @@map("clinic_leads")
+}
+
+// ─── SHARED ───────────────────────────────────────
+
+model SharedProfile {
+  id        String   @id @db.Uuid
+  role      String // patient | therapist | admin
+  fullName  String
+  phone     String?
+  status    String   @default("active") // active | inactive | suspended
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  therapist TherapyTherapist?
+  patient   TherapyPatient?
+
+  @@map("shared_profiles")
+}
+
+// ─── THERAPISTS ───────────────────────────────────
+
+model TherapyTherapist {
+  id              String   @id @default(uuid()) @db.Uuid
+  profileId       String   @unique @db.Uuid
+  bio             String?
+  specializations String[]
+  qualifications  String[]
+  profilePhoto    String?
+  status          String   @default("pending") // pending | approved | rejected | suspended
+  sessionRate     Decimal  @default(15000) @db.Decimal(10, 2)
+  sessionDuration Int      @default(50) // 50 | 60 | 90 — set by admin only
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  profile               SharedProfile                 @relation(fields: [profileId], references: [id])
+  availabilitySchedule  TherapyAvailabilitySchedule[]
+  availabilityOverrides TherapyAvailabilityOverride[]
+  bookings              TherapyBooking[]
+  sessions              TherapySession[]
+  notes                 TherapySessionNote[]
+  rebookingRequests     TherapyRebookingRequest[]
+  chatThreads           ChatThread[]
+
+  @@map("therapy_therapists")
+}
+
+// ─── PATIENTS ─────────────────────────────────────
+
+model TherapyPatient {
+  id          String    @id @default(uuid()) @db.Uuid
+  profileId   String?   @unique @db.Uuid // null for guests
+  fullName    String
+  email       String
+  phone       String
+  dateOfBirth DateTime?
+  gender      String?
+  occupation  String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  profile        SharedProfile?             @relation(fields: [profileId], references: [id])
+  bookings       TherapyBooking[]
+  credits        TherapyCredit?
+  transactions   TherapyCreditTransaction[]
+  medicalHistory TherapyMedicalHistory?
+  rebookingRequests TherapyRebookingRequest[]
+  chatThreads       ChatThread[]
+  chatConsents      ChatConsent[]
+
+  @@map("therapy_patients")
+}
+
+model TherapyMedicalHistory {
+  id                 String   @id @default(uuid()) @db.Uuid
+  patientId          String   @unique @db.Uuid
+  currentMedications String?
+  allergies          String?
+  previousDiagnoses  String?
+  previousTherapy    String?
+  familyMedical      String?
+  familyPsychiatric  String?
+  familySubstanceUse String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  patient TherapyPatient @relation(fields: [patientId], references: [id])
+
+  @@map("therapy_medical_history")
+}
+
+// ─── AVAILABILITY ─────────────────────────────────
+
+model TherapyAvailabilitySchedule {
+  id                     String   @id @default(uuid()) @db.Uuid
+  therapistId            String   @db.Uuid
+  dayOfWeek              Int // 0=Mon 1=Tue ... 6=Sun
+  startTime              String // "09:00"
+  endTime                String // "17:00"
+  sessionDurationMinutes Int      @default(50)
+  bufferMinutes          Int      @default(0)
+  bookingWindowWeeks     Int      @default(4)
+  minimumNoticeHours     Int      @default(2)
+  isActive               Boolean  @default(true)
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  therapist TherapyTherapist @relation(fields: [therapistId], references: [id])
+
+  @@map("therapy_availability_schedules")
+}
+
+model TherapyAvailabilityOverride {
+  id          String   @id @default(uuid()) @db.Uuid
+  therapistId String   @db.Uuid
+  date        DateTime
+  isBlocked   Boolean  @default(true)
+  startTime   String?
+  endTime     String?
+  reason      String?
+  createdAt   DateTime @default(now())
+
+  therapist TherapyTherapist @relation(fields: [therapistId], references: [id])
+
+  @@map("therapy_availability_overrides")
+}
+
+// ─── BOOKINGS ─────────────────────────────────────
+
+model TherapyBooking {
+  id                String    @id @default(uuid()) @db.Uuid
+  therapistId       String    @db.Uuid
+  patientId         String?   @db.Uuid // null for guests
+  guestName         String?
+  guestEmail        String?
+  guestPhone        String?
+  guestBookingReason String?
+  isAnonymous       Boolean   @default(false)
+  clientAlias       String? // therapist-facing alias when isAnonymous
+  date              DateTime
+  startTime         String
+  endTime           String
+  agoraRoomId       String?
+  agoraRoomToken    String?
+  status            String    @default("pending") // pending | confirmed | completed | cancelled
+  consentConfirmed  Boolean   @default(false)
+  consentTimestamp  DateTime?
+  paystackReference String?
+  paymentStatus     String    @default("pending") // pending | paid | refunded
+  sessionType       String    @default("followup") // intake | followup
+  paidWithCredits   Boolean   @default(false)
+  reminder24hSent   Boolean   @default(false)
+  reminder1hSent    Boolean   @default(false)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  therapist TherapyTherapist @relation(fields: [therapistId], references: [id])
+  patient   TherapyPatient?  @relation(fields: [patientId], references: [id])
+  session              TherapySession?
+  rebookingRequestLink TherapyRebookingRequest?
+
+  @@map("therapy_bookings")
+}
+
+// ─── SESSIONS ─────────────────────────────────────
+
+model TherapySession {
+  id               String    @id @default(uuid()) @db.Uuid
+  bookingId        String    @unique @db.Uuid
+  therapistId      String    @db.Uuid
+  patientId        String?   @db.Uuid
+  sessionNumber    Int       @default(1)
+  startedAt        DateTime?
+  endedAt          DateTime?
+  durationMinutes  Int?
+  format           String    @default("telehealth") // telehealth | in-person
+  status           String    @default("scheduled") // scheduled | in-progress | completed | no-show | cancelled
+  agoraTranscript  String? // deleted after note generation
+  notesGenerated   Boolean   @default(false)
+  notesGeneratedAt DateTime?
+  generatedBy      String? // claude | deepseek (internal only)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  booking   TherapyBooking      @relation(fields: [bookingId], references: [id])
+  therapist TherapyTherapist    @relation(fields: [therapistId], references: [id])
+  note      TherapySessionNote?
+  feedbacks TherapyFeedback[]
+
+  @@map("therapy_sessions")
+}
+
+// ─── NOTES ────────────────────────────────────────
+
+model TherapySessionNote {
+  id          String    @id @default(uuid()) @db.Uuid
+  sessionId   String    @unique @db.Uuid
+  therapistId String    @db.Uuid
+  noteType    String // soap | intake
+  noteContent String // encrypted JSON
+  isEdited    Boolean   @default(false)
+  editedAt    DateTime?
+  pdfUrl      String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  session   TherapySession   @relation(fields: [sessionId], references: [id])
+  therapist TherapyTherapist @relation(fields: [therapistId], references: [id])
+
+  @@map("therapy_session_notes")
+}
+
+// ─── CREDITS ──────────────────────────────────────
+
+model TherapyCredit {
+  id        String   @id @default(uuid()) @db.Uuid
+  patientId String   @unique @db.Uuid
+  balance   Int      @default(0)
+  tier      String   @default("bronze") // bronze | silver | gold | platinum
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  patient TherapyPatient @relation(fields: [patientId], references: [id])
+
+  @@map("therapy_credits")
+}
+
+model TherapyCreditTransaction {
+  id        String   @id @default(uuid()) @db.Uuid
+  patientId String   @db.Uuid
+  amount    Int // positive = purchase, negative = used
+  type      String // purchase | session | refund
+  reference String?
+  createdAt DateTime @default(now())
+
+  patient TherapyPatient @relation(fields: [patientId], references: [id])
+
+  @@map("therapy_credit_transactions")
+}
+
+// ─── FEEDBACK ─────────────────────────────────────
+
+model TherapyFeedback {
+  id        String   @id @default(uuid()) @db.Uuid
+  sessionId String   @db.Uuid
+  rating    Int // 1-5
+  mood      String? // 😞 😐 🙂 😊 😄
+  comment   String?
+  createdAt DateTime @default(now())
+
+  session TherapySession @relation(fields: [sessionId], references: [id])
+
+  @@map("therapy_feedback")
+}
+
+// ─── REBOOKING (therapist-initiated) ──────────────
+
+model TherapyRebookingRequest {
+  id              String    @id @default(uuid()) @db.Uuid
+  therapistId     String    @db.Uuid
+  patientId       String    @db.Uuid
+  bookingId       String?   @unique @db.Uuid
+  suggestedDate   DateTime
+  suggestedTime   String
+  sessionType     String    @default("followup")
+  message         String?
+  status          String    @default("pending")
+  expiresAt       DateTime
+  respondedAt     DateTime?
+  notifiedAt      DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  therapist TherapyTherapist @relation(fields: [therapistId], references: [id])
+  patient   TherapyPatient   @relation(fields: [patientId], references: [id])
+  booking   TherapyBooking?  @relation(fields: [bookingId], references: [id])
+
+  @@map("therapy_rebooking_requests")
+}
+
+// ─── CHAT (patient ↔ therapist, encrypted content) ─
+
+model ChatThread {
+  id           String    @id @default(uuid()) @db.Uuid
+  patientId    String    @db.Uuid
+  therapistId  String    @db.Uuid
+  status       String    @default("active") // active | paused | closed | pending_deletion | deleted
+  consentGiven Boolean   @default(false)
+  consentAt    DateTime?
+  slaPatientMessageId     String?   @db.Uuid
+  slaTherapistRemindedAt  DateTime?
+  slaAdminNotifiedAt      DateTime?
+  deletionScheduledAt     DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  patient   TherapyPatient   @relation(fields: [patientId], references: [id])
+  therapist TherapyTherapist @relation(fields: [therapistId], references: [id])
+  messages  ChatMessage[]
+  auditLogs ChatAuditLog[]
+
+  @@unique([patientId, therapistId])
+  @@map("chat_threads")
+}
+
+model ChatMessage {
+  id          String    @id @default(uuid()) @db.Uuid
+  threadId    String    @db.Uuid
+  senderId    String    @db.Uuid
+  senderRole  String
+  content     String
+  contentIv   String
+  isRead      Boolean   @default(false)
+  readAt      DateTime?
+  isDeleted   Boolean   @default(false)
+  deletedAt   DateTime?
+  riskLevel   String?
+  riskType    String?
+  riskScanned Boolean   @default(false)
+  isFlagged   Boolean   @default(false)
+  flaggedAt   DateTime?
+  flagReason  String?
+  isResolved      Boolean   @default(false)
+  resolvedAt      DateTime?
+  resolvedBy      String?   @db.Uuid
+  resolutionNote  String?
+  highRiskEscalatedAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  thread ChatThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+
+  @@map("chat_messages")
+}
+
+model ConsentRecord {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String?  @db.Uuid
+  bookingId   String?  @db.Uuid
+  consentType String
+  consentedAt DateTime @default(now())
+  ipAddress   String?
+  userAgent   String?
+  version     String   @default("1.0")
+
+  @@index([userId])
+  @@index([bookingId])
+  @@map("consent_records")
+}
+
+model ChatAuditLog {
+  id         String   @id @default(uuid()) @db.Uuid
+  threadId   String   @db.Uuid
+  actorId    String   @db.Uuid
+  actorRole  String
+  action     String
+  metadata   Json?
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+
+  thread ChatThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+
+  @@map("chat_audit_logs")
+}
+
+model ChatConsent {
+  id             String   @id @default(uuid()) @db.Uuid
+  patientId      String   @db.Uuid
+  consentType    String
+  consentGiven   Boolean
+  consentVersion String   @default("1.0")
+  ipAddress      String?
+  userAgent      String?
+  createdAt      DateTime @default(now())
+
+  patient TherapyPatient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@map("chat_consents")
+}

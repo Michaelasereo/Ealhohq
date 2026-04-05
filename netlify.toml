@@ -1,0 +1,17 @@
+[build]
+  command = "npm run build"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+[[plugins]]
+  package = "@netlify/plugin-cron"
+  [plugins.inputs]
+    schedule = "*/30 * * * *"
+    path = "/api/cron/reminders"
+
+[[plugins]]
+  package = "@netlify/plugin-cron"
+  [plugins.inputs]
+    schedule = "15 4 * * *"
+    path = "/api/cron/data-retention"
