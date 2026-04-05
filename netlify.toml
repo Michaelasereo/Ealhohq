@@ -1,17 +1,12 @@
 [build]
-  command = "npm run build"
+  command = "npx prisma generate && npm run build"
+
+[build.environment]
+  NODE_VERSION = "20"
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
 
-[[plugins]]
-  package = "@netlify/plugin-cron"
-  [plugins.inputs]
-    schedule = "*/30 * * * *"
-    path = "/api/cron/reminders"
-
-[[plugins]]
-  package = "@netlify/plugin-cron"
-  [plugins.inputs]
-    schedule = "15 4 * * *"
-    path = "/api/cron/data-retention"
+# Cron endpoints: `/api/cron/reminders` and `/api/cron/data-retention` (Bearer CRON_SECRET).
+# Schedule them with an external cron (e.g. GitHub Actions) or Netlify Scheduled Functions
+# once configured for your account — the old `@netlify/plugin-cron` package is not published.

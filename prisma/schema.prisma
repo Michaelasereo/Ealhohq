@@ -5,7 +5,9 @@ datasource db {
 }
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  // Netlify serverless (Linux / OpenSSL 3) needs an engine besides local macOS `native`
+  binaryTargets = ["native", "rhel-openssl-3.0.x", "debian-openssl-3.0.x"]
 }
 
 // ─── ADMIN CONFIG (singleton row id = "default") ──
