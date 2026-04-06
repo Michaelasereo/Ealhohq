@@ -80,6 +80,7 @@ model TherapyTherapist {
   rebookingRequests     TherapyRebookingRequest[]
   chatThreads           ChatThread[]
   earningsConfig        EarningsConfig?
+  sessionPackages       TherapySessionPackage[]
 
   @@map("therapy_therapists")
 }
@@ -106,6 +107,7 @@ model TherapyPatient {
   rebookingRequests TherapyRebookingRequest[]
   chatThreads       ChatThread[]
   chatConsents      ChatConsent[]
+  sessionPackages   TherapySessionPackage[]
 
   @@map("therapy_patients")
 }
@@ -186,7 +188,8 @@ model TherapyBooking {
   consentConfirmed  Boolean   @default(false)
   consentTimestamp  DateTime?
   paystackReference String?
-  paymentStatus     String    @default("pending") // pending | paid | refunded
+  paymentStatus     String    @default("pending") // pending | paid | refunded | package_credit
+  packageId         String?   @db.Uuid
   sessionType       String    @default("followup") // intake | followup
   paidWithCredits   Boolean   @default(false)
   reminder24hSent   Boolean   @default(false)
@@ -211,8 +214,35 @@ model TherapyBooking {
   discountCodeUses   DiscountCodeUse[]
   referralPartner    ReferralPartner? @relation(fields: [referralPartnerId], references: [id])
   referralSession    ReferralSession?
+  package            TherapySessionPackage? @relation(fields: [packageId], references: [id])
 
   @@map("therapy_bookings")
+}
+
+model TherapySessionPackage {
+  id                String   @id @default(uuid()) @db.Uuid
+  patientId         String   @db.Uuid
+  therapistId       String   @db.Uuid
+  packageType       String // single | package_4 | package_6 | package_8
+  totalSessions     Int
+  usedSessions      Int      @default(0)
+  remainingSessions Int
+  pricePerSession   Decimal  @db.Decimal(10, 2)
+  totalPaid         Decimal  @db.Decimal(10, 2)
+  discountPercent   Int      @default(0)
+  paystackReference String?
+  status            String   @default("active") // active | exhausted | expired | refunded
+  expiresAt         DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  patient   TherapyPatient   @relation(fields: [patientId], references: [id])
+  therapist TherapyTherapist @relation(fields: [therapistId], references: [id])
+  bookings  TherapyBooking[]
+
+  @@index([patientId, status])
+  @@index([therapistId, status])
+  @@map("therapy_session_packages")
 }
 
 // ─── SESSIONS ─────────────────────────────────────

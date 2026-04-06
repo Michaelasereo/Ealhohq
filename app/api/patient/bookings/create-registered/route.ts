@@ -8,6 +8,7 @@ import {
 } from "@/lib/rebooking/notify-confirmed";
 import { getPatientByProfileId } from "@/lib/queries/patient";
 import { finalizeTherapyPaymentWithCredits } from "@/lib/payment/finalize-therapy-payment";
+import { getPackageOption } from "@/lib/packages/config";
 import { prisma } from "@/lib/prisma/client";
 import { createClient } from "@/lib/supabase/server";
 import { watDayStart } from "@/lib/wat-datetime";
@@ -22,6 +23,7 @@ const bodySchema = z
     time: z.string().regex(TIME_RE),
     sessionType: z.enum(["intake", "followup"]),
     useCredits: z.boolean(),
+    packageType: z.string().optional(),
     consentConfirmed: z.literal(true),
     consentTimestamp: z.string().min(1),
   })
@@ -49,8 +51,9 @@ export async function POST(req: Request) {
       );
     }
 
-    const { therapistId, date, time, sessionType, useCredits, consentTimestamp } =
+    const { therapistId, date, time, sessionType, useCredits, consentTimestamp, packageType: rawPackageType } =
       parsed.data;
+    const packageType = getPackageOption(rawPackageType ?? "single").id;
 
     const patient = await getPatientByProfileId(user.id);
     if (!patient) {
@@ -131,7 +134,7 @@ export async function POST(req: Request) {
         }
         return NextResponse.json({
           success: true,
-          data: { bookingId: booking.id, paidWithCredits: true },
+          data: { bookingId: booking.id, paidWithCredits: true, packageType: "single" },
         });
       } catch (e) {
         const msg = e instanceof Error ? e.message : "";
@@ -152,7 +155,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       success: true,
-      data: { bookingId: booking.id, paidWithCredits: false },
+      data: { bookingId: booking.id, paidWithCredits: false, packageType },
     });
   } catch (e) {
     console.error("client bookings/create-registered POST:", e);

@@ -39,6 +39,9 @@ export async function GET(req: Request) {
         },
         include: {
           patient: { select: { id: true, fullName: true, email: true } },
+          package: {
+            select: { totalSessions: true, usedSessions: true, packageType: true },
+          },
           session: {
             include: {
               note: {
@@ -73,6 +76,9 @@ export async function GET(req: Request) {
         },
         include: {
           patient: { select: { id: true, fullName: true, email: true } },
+          package: {
+            select: { totalSessions: true, usedSessions: true, packageType: true },
+          },
           session: {
             include: {
               note: {
@@ -100,6 +106,9 @@ export async function GET(req: Request) {
       },
       include: {
         patient: { select: { id: true, fullName: true, email: true } },
+        package: {
+          select: { totalSessions: true, usedSessions: true, packageType: true },
+        },
         session: {
           include: {
             note: {

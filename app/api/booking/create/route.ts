@@ -4,6 +4,7 @@ import { getAvailableSlots } from "@/lib/availability/slots";
 import { ensureRegisteredPatientForUser } from "@/lib/queries/patient";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma/client";
+import { getPackageOption } from "@/lib/packages/config";
 import { watDayStart } from "@/lib/wat-datetime";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -27,7 +28,11 @@ export async function POST(req: Request) {
       professionalType: rawProfessionalType,
       isAnonymous: rawAnonymous,
       referralCode: rawReferralCode,
+      packageType: rawPackageType,
     } = body as Record<string, unknown>;
+    const packageType =
+      typeof rawPackageType === "string" ? getPackageOption(rawPackageType).id : "single";
+
 
     const isAnonymous = Boolean(rawAnonymous);
 
@@ -297,7 +302,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       success: true,
-      data: { bookingId: booking.id },
+      data: { bookingId: booking.id, packageType },
       error: null,
       meta: { timestamp: new Date().toISOString() },
     });

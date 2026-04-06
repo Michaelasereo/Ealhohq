@@ -16,6 +16,7 @@ type BookingWa = Prisma.TherapyBookingGetPayload<{
   include: {
     therapist: { include: { profile: true } };
     patient: true;
+    package: true;
   };
 }>;
 
@@ -50,6 +51,12 @@ export async function sendBookingConfirmationWhatsAppIfPhone(
         duration,
         sessionLink,
         isAnonymous: booking.isAnonymous,
+        packageInfo: booking.package
+          ? {
+              totalSessions: booking.package.totalSessions,
+              remainingSessions: booking.package.remainingSessions,
+            }
+          : undefined,
       }),
     }).catch((err) => console.error("WhatsApp send failed:", err));
   }

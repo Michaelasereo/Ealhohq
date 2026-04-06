@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { finalizeTherapyPayment } from "@/lib/payment/finalize-therapy-payment";
 import { sendTherapyBookingPaidNotifications } from "@/lib/payment/send-therapy-booking-paid-notifications";
+import { getPackageOption } from "@/lib/packages/config";
 
 export async function POST(req: Request) {
   try {
@@ -9,6 +10,7 @@ export async function POST(req: Request) {
     const { bookingId, paystackReference } = body as {
       bookingId?: string;
       paystackReference?: string | null;
+      packageType?: string;
     };
 
     if (typeof bookingId !== "string" || !bookingId) {
@@ -35,8 +37,12 @@ export async function POST(req: Request) {
       );
     }
 
+    const packageType = getPackageOption(
+      typeof body.packageType === "string" ? body.packageType : "single",
+    ).id;
+
     const { booking, sessionId, shouldSendConfirmationEmail } =
-      await finalizeTherapyPayment(bookingId, paystackReference.trim());
+      await finalizeTherapyPayment(bookingId, paystackReference.trim(), packageType);
 
     if (shouldSendConfirmationEmail) {
       await sendTherapyBookingPaidNotifications(booking);

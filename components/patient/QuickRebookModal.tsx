@@ -39,6 +39,14 @@ type QuickRebookPayload = {
   }[];
   sessionType: string;
   sessionCount: number;
+  activePackage: {
+    id: string;
+    packageType: string;
+    totalSessions: number;
+    usedSessions: number;
+    remainingSessions: number;
+    expiresAt: string | null;
+  } | null;
 };
 
 async function postQuickRebook(therapistId: string): Promise<QuickRebookPayload> {
@@ -91,6 +99,7 @@ export function QuickRebookModal({
   const [consent, setConsent] = useState(false);
   const [consentAt, setConsentAt] = useState<string | null>(null);
   const [payWithCredit, setPayWithCredit] = useState(true);
+  const [usePackageCredit, setUsePackageCredit] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
 
   const qb = useQuery({
@@ -112,6 +121,7 @@ export function QuickRebookModal({
     setConsentAt(null);
     setLocalError(null);
     setPayWithCredit(true);
+    setUsePackageCredit(false);
   }, [isOpen, therapistId]);
 
   useEffect(() => {
@@ -130,6 +140,34 @@ export function QuickRebookModal({
       }
       const payload = await qb.data;
       if (!payload) throw new Error("Still loading.");
+
+      if (usePackageCredit) {
+        if (!payload.activePackage?.id) {
+          throw new Error("No active package available for this therapist.");
+        }
+        const packageRes = await fetch("/api/bookings/use-package-credit", {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            packageId: payload.activePackage.id,
+            therapistId: payload.therapist.id,
+            date: selected.date,
+            time: selected.time,
+            sessionType: payload.sessionType === "intake" ? "intake" : "followup",
+            consentTimestamp: consentAt,
+          }),
+        });
+        const packageJson = (await packageRes.json()) as {
+          success?: boolean;
+          data?: { bookingId: string };
+          error?: string;
+        };
+        if (!packageRes.ok || !packageJson.success || !packageJson.data?.bookingId) {
+          throw new Error(packageJson.error ?? "Could not use package credit");
+        }
+        return { redirected: false as const };
+      }
 
       const useCredits = Boolean(creditsQ.data && creditsQ.data >= 1 && payWithCredit);
 
@@ -206,6 +244,7 @@ export function QuickRebookModal({
   const hasCredits = balance >= 1;
   const rate = qb.data?.therapist.sessionRate ?? 0;
   const duration = qb.data?.therapist.sessionDuration ?? 50;
+  const activePackage = qb.data?.activePackage ?? null;
 
   return (
     <Sheet open={isOpen} onOpenChange={(o) => !o && onClose()}>
@@ -305,7 +344,41 @@ export function QuickRebookModal({
                 </Link>
               </div>
 
-              {hasCredits ? (
+              {activePackage ? (
+                <div className="rounded-xl border border-[#1A7A4A]/30 bg-[#F0FAF4] p-3 text-sm">
+                  <p className="font-medium">🎟 Use Package Credit</p>
+                  <p className="mt-1 text-muted-foreground">
+                    You have {activePackage.remainingSessions} session
+                    {activePackage.remainingSessions === 1 ? "" : "s"} remaining with{" "}
+                    {displayName}
+                  </p>
+                  <div className="mt-2 flex gap-2">
+                    <Button
+                      type="button"
+                      variant={usePackageCredit ? "default" : "outline"}
+                      className={cn(
+                        "min-h-11 flex-1",
+                        usePackageCredit && "bg-[#1A7A4A] text-white hover:bg-[#1A7A4A]/90",
+                      )}
+                      disabled={busy}
+                      onClick={() => setUsePackageCredit(true)}
+                    >
+                      Use Credit — Book Free
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={!usePackageCredit ? "default" : "outline"}
+                      className="min-h-11 flex-1"
+                      disabled={busy}
+                      onClick={() => setUsePackageCredit(false)}
+                    >
+                      Pay new session
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
+
+              {hasCredits && !usePackageCredit ? (
                 <div className="rounded-xl border border-border p-3 text-sm">
                   <p className="font-medium">You have {balance} credit{balance === 1 ? "" : "s"}</p>
                   <div className="mt-2 flex gap-2">
@@ -339,7 +412,7 @@ export function QuickRebookModal({
 
               <div className="rounded-xl border border-border p-3">
                 <p className="text-sm font-medium">
-                  ₦{rate.toLocaleString("en-NG")}{" "}
+                  {usePackageCredit ? "Package credit" : `₦${rate.toLocaleString("en-NG")}`}{" "}
                   <span className="font-normal text-muted-foreground">
                     · {duration} minutes
                   </span>
@@ -393,10 +466,14 @@ export function QuickRebookModal({
                 }
               >
                 {bookMut.isPending
-                  ? payWithCredit && hasCredits
+                  ? usePackageCredit
+                    ? "Booking with package credit…"
+                    : payWithCredit && hasCredits
                     ? "Booking…"
                     : "Opening Paystack…"
-                  : "Confirm and pay"}
+                  : usePackageCredit
+                    ? "Use Credit — Book Free"
+                    : "Confirm and pay"}
               </Button>
             </>
           )}

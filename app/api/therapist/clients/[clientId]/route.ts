@@ -102,6 +102,23 @@ export async function GET(_req: Request, ctx: Ctx) {
     const lastSession = dates[0];
 
     const mh = patient.medicalHistory;
+    const activePackage = await prisma.therapySessionPackage.findFirst({
+      where: {
+        patientId: clientId,
+        therapistId: therapist.id,
+        status: "active",
+        remainingSessions: { gt: 0 },
+        OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+      },
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        packageType: true,
+        totalSessions: true,
+        remainingSessions: true,
+        expiresAt: true,
+      },
+    });
     const anonBooking = bookings.find((b) => b.isAnonymous);
     const hasAnonymous = Boolean(anonBooking);
     const displayName = anonBooking
@@ -149,6 +166,15 @@ export async function GET(_req: Request, ctx: Ctx) {
         sessionCount: sessionRows.length,
         firstSessionDate: firstSession?.slice(0, 10) ?? null,
         lastSessionDate: lastSession?.slice(0, 10) ?? null,
+        activePackage: activePackage
+          ? {
+              id: activePackage.id,
+              packageType: activePackage.packageType,
+              totalSessions: activePackage.totalSessions,
+              remainingSessions: activePackage.remainingSessions,
+              expiresAt: activePackage.expiresAt?.toISOString() ?? null,
+            }
+          : null,
       },
       error: null,
       meta: { timestamp: new Date().toISOString() },

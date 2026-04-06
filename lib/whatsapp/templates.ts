@@ -10,6 +10,10 @@ export const templates = {
     duration: number;
     sessionLink: string;
     isAnonymous?: boolean;
+    packageInfo?: {
+      totalSessions: number;
+      remainingSessions: number;
+    };
   }) => `Hi ${params.isAnonymous ? "there" : params.patientName}! ✅
 
 Your Ealho Therapy session is confirmed.
@@ -21,6 +25,8 @@ ${params.therapistName}
 
 Join your session here:
 ${params.sessionLink}
+
+${params.packageInfo ? `\nYour ${params.packageInfo.totalSessions}-session package is active. You have ${params.packageInfo.remainingSessions} session${params.packageInfo.remainingSessions === 1 ? "" : "s"} remaining.\n` : ""}
 
 This link is unique to you. Please do not share it.
 

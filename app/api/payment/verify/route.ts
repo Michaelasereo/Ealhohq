@@ -8,6 +8,7 @@ import { getPaystackSecretKey } from "@/lib/paystack/server-keys";
 import { prisma } from "@/lib/prisma/client";
 import { chargeSessionRateNgn } from "@/lib/referral/pricing";
 import { therapistPublicLabel } from "@/lib/therapist-display-name";
+import { calculatePackagePrice, getPackageOption } from "@/lib/packages/config";
 
 function parseMetadata(raw: unknown): Record<string, string> {
   if (!raw) return {};
@@ -116,11 +117,15 @@ export async function POST(req: Request) {
     }
 
     const rate = chargeSessionRateNgn(bookingRow);
+    const packageOption = getPackageOption(meta.package_type ?? "single");
+    const packagePricing = calculatePackagePrice(rate, packageOption);
     const disc =
       bookingRow.discountAmount != null
         ? Number(bookingRow.discountAmount)
         : 0;
-    const expectedKobo = formatAmountToKobo(Math.max(0, rate - disc));
+    const expectedKobo = formatAmountToKobo(
+      Math.max(0, packagePricing.finalPrice - disc),
+    );
     if (
       typeof payload.data?.amount === "number" &&
       payload.data.amount !== expectedKobo
@@ -140,7 +145,7 @@ export async function POST(req: Request) {
 
     const ref = payload.data?.reference ?? reference.trim();
     const { booking, sessionId, shouldSendConfirmationEmail } =
-      await finalizeTherapyPayment(bookingId, ref);
+      await finalizeTherapyPayment(bookingId, ref, packageOption.id);
 
     if (
       bookingRow.discountCode &&

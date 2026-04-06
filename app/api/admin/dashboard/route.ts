@@ -22,6 +22,9 @@ export async function GET() {
       totalTherapists,
       pendingTherapists,
       sessionsThisMonth,
+      activePackagesCount,
+      packageRevenueThisMonth,
+      packageConversionRate,
       pendingApplications,
     ] = await Promise.all([
       prisma.therapyPatient.count(),
@@ -30,6 +33,29 @@ export async function GET() {
       prisma.therapySession.count({
         where: { createdAt: { gte: monthStart } },
       }),
+      prisma.therapySessionPackage.count({ where: { status: "active" } }),
+      prisma.therapySessionPackage.aggregate({
+        _sum: { totalPaid: true },
+        where: { createdAt: { gte: monthStart } },
+      }),
+      (async () => {
+        const [pkg, single] = await Promise.all([
+          prisma.therapyBooking.count({
+            where: {
+              status: { in: ["confirmed", "completed"] },
+              packageId: { not: null },
+            },
+          }),
+          prisma.therapyBooking.count({
+            where: {
+              status: { in: ["confirmed", "completed"] },
+              packageId: null,
+            },
+          }),
+        ]);
+        const total = pkg + single;
+        return total > 0 ? Math.round((pkg / total) * 100) : 0;
+      })(),
       prisma.therapyTherapist.findMany({
         where: { status: "pending" },
         include: {
@@ -47,6 +73,9 @@ export async function GET() {
           totalTherapists,
           pendingTherapists,
           sessionsThisMonth,
+          activePackagesCount,
+          packageRevenueThisMonth: Number(packageRevenueThisMonth._sum.totalPaid ?? 0),
+          packageConversionRate,
         },
         pendingApplications,
       },

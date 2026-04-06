@@ -6,6 +6,8 @@ import { useEffect, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 
 import { Button, buttonVariants } from "@/components/ui/button";
+import { PackageSelector } from "@/components/booking/PackageSelector";
+import { calculatePackagePrice, getPackageOption } from "@/lib/packages/config";
 import { cn } from "@/lib/utils";
 import { bookingDateStartToIso, formatWAT } from "@/lib/wat-datetime";
 import { useBookingStore } from "@/stores/bookingStore";
@@ -20,6 +22,9 @@ export function BookingConfirmClient({ listHref }: Props) {
   const router = useRouter();
   const draft = useBookingStore((s) => s.draft);
   const setDraft = useBookingStore((s) => s.setDraft);
+  const selectedPackage = useBookingStore((s) => s.selectedPackage);
+  const packagePrice = useBookingStore((s) => s.packagePrice);
+  const setSelectedPackage = useBookingStore((s) => s.setSelectedPackage);
 
   const [guest, setGuest] = useState<GuestDetails>({
     fullName: "",
@@ -32,6 +37,9 @@ export function BookingConfirmClient({ listHref }: Props) {
   const [payPhase, setPayPhase] = useState<
     "idle" | "creating" | "initializing"
   >("idle");
+  const [paymentMode, setPaymentMode] = useState<"paystack" | "package">(
+    "paystack",
+  );
 
   const needsGuest = Boolean(draft?.isGuest || !draft?.patientId);
 
@@ -53,6 +61,28 @@ export function BookingConfirmClient({ listHref }: Props) {
       return j.data ?? null;
     },
     enabled: Boolean(draft?.patientId),
+  });
+
+  const packageQ = useQuery({
+    queryKey: ["patient-packages-inline", draft?.therapistId],
+    queryFn: async () => {
+      const r = await fetch("/api/patient/packages", { credentials: "include" });
+      const j = (await r.json()) as {
+        success?: boolean;
+        data?: {
+          packages: {
+            id: string;
+            therapist: { id: string; name: string };
+            remainingSessions: number;
+          }[];
+        };
+      };
+      if (!r.ok || !j.success) return null;
+      return (
+        j.data?.packages.find((p) => p.therapist.id === draft?.therapistId) ?? null
+      );
+    },
+    enabled: Boolean(draft?.therapistId && draft?.patientId),
   });
 
   useEffect(() => {
@@ -84,6 +114,7 @@ export function BookingConfirmClient({ listHref }: Props) {
         sessionType: draft.sessionType ?? "followup",
         consentConfirmed: true,
         consentTimestamp: consentAt,
+        packageType: selectedPackage,
       };
       if (draft.patientId) {
         body.patientId = draft.patientId;
@@ -107,12 +138,50 @@ export function BookingConfirmClient({ listHref }: Props) {
         throw new Error(j.error ?? "Could not create booking");
       }
       const bookingId = j.data.bookingId;
-      setDraft({ ...draft, bookingId });
+      setDraft({
+        ...draft,
+        bookingId,
+        selectedPackage,
+        packagePrice: naira,
+      });
       return bookingId;
     },
   });
 
-  const busy = payPhase !== "idle" || createBooking.isPending;
+  const usePackageMut = useMutation({
+    mutationFn: async () => {
+      if (!draft?.therapistId || !draft.date || !draft.startTime) {
+        throw new Error("Booking selection is incomplete.");
+      }
+      if (!packageQ.data?.id) {
+        throw new Error("No active package found for this therapist.");
+      }
+      const r = await fetch("/api/bookings/use-package-credit", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          packageId: packageQ.data.id,
+          therapistId: draft.therapistId,
+          date: draft.date,
+          time: draft.startTime,
+          sessionType: draft.sessionType ?? "followup",
+          consentTimestamp: consentAt,
+        }),
+      });
+      const j = (await r.json()) as {
+        success?: boolean;
+        data?: { bookingId: string };
+        error?: string;
+      };
+      if (!r.ok || !j.success || !j.data?.bookingId) {
+        throw new Error(j.error ?? "Could not use package credit");
+      }
+      return j.data.bookingId;
+    },
+  });
+
+  const busy = payPhase !== "idle" || createBooking.isPending || usePackageMut.isPending;
 
   if (!draft?.therapistId) {
     return (
@@ -131,11 +200,17 @@ export function BookingConfirmClient({ listHref }: Props) {
     !needsGuest ||
     (guest.fullName.trim() && guest.email.trim() && guest.phone.trim());
 
-  const naira =
+  const nairaBase =
     draft.sessionRateNaira ??
     Math.round(
       Number((draft.sessionRateFormatted || "").replace(/[^\d.]/g, "")) || 0,
     );
+  const selectedPackageOption = getPackageOption(selectedPackage);
+  const calculatedPackagePrice = calculatePackagePrice(
+    nairaBase,
+    selectedPackageOption,
+  ).finalPrice;
+  const naira = packagePrice > 0 ? packagePrice : calculatedPackagePrice;
 
   async function startPaystack() {
     setPayError(null);
@@ -149,6 +224,12 @@ export function BookingConfirmClient({ listHref }: Props) {
     }
 
     try {
+      if (paymentMode === "package") {
+        setPayPhase("creating");
+        const bookingId = await usePackageMut.mutateAsync();
+        router.push(`/dashboard/book/success?bookingId=${encodeURIComponent(bookingId)}`);
+        return;
+      }
       setPayPhase("creating");
       let bookingId = useBookingStore.getState().draft?.bookingId;
       if (!bookingId) {
@@ -163,6 +244,7 @@ export function BookingConfirmClient({ listHref }: Props) {
         body: JSON.stringify({
           bookingId,
           email: emailForPay,
+          packageType: selectedPackageOption.id,
         }),
       });
       const initJson = (await initRes.json()) as {
@@ -225,6 +307,48 @@ export function BookingConfirmClient({ listHref }: Props) {
         </span>
       </label>
 
+      {packageQ.data ? (
+        <div className="rounded-xl border border-[#1A7A4A]/30 bg-[#F0FAF4] p-3 text-sm">
+          <p className="font-medium">🎟 Use Package Credit</p>
+          <p className="mt-1 text-muted-foreground">
+            You have {packageQ.data.remainingSessions} session
+            {packageQ.data.remainingSessions === 1 ? "" : "s"} remaining with{" "}
+            {packageQ.data.therapist.name}
+          </p>
+          <div className="mt-2 flex gap-2">
+            <Button
+              type="button"
+              variant={paymentMode === "package" ? "default" : "outline"}
+              className={cn(
+                "min-h-11 flex-1",
+                paymentMode === "package" &&
+                  "bg-[#1A7A4A] text-white hover:bg-[#1A7A4A]/90",
+              )}
+              disabled={busy}
+              onClick={() => setPaymentMode("package")}
+            >
+              Use Credit — Book Free
+            </Button>
+            <Button
+              type="button"
+              variant={paymentMode === "paystack" ? "default" : "outline"}
+              className="min-h-11 flex-1"
+              disabled={busy}
+              onClick={() => setPaymentMode("paystack")}
+            >
+              Pay for new session
+            </Button>
+          </div>
+        </div>
+      ) : null}
+
+      <PackageSelector
+        sessionRate={nairaBase}
+        therapistName={draft.therapistName}
+        selectedPackage={selectedPackage}
+        onSelect={(packageId) => setSelectedPackage(packageId, nairaBase)}
+      />
+
       {payError ? (
         <p className="text-sm text-destructive">{payError}</p>
       ) : null}
@@ -243,10 +367,14 @@ export function BookingConfirmClient({ listHref }: Props) {
         onClick={() => void startPaystack()}
       >
         {payPhase === "creating"
-          ? "Saving booking…"
+          ? paymentMode === "package"
+            ? "Booking with package credit…"
+            : "Saving booking…"
           : payPhase === "initializing"
             ? "Opening Paystack…"
-            : `Pay ₦${naira.toLocaleString("en-NG")}`}
+            : paymentMode === "package"
+              ? "Use Credit — Book Free"
+              : `Pay ₦${naira.toLocaleString("en-NG")}`}
       </Button>
 
       <Link

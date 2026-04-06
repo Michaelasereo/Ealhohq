@@ -16,8 +16,10 @@ import {
   formatSlot12hWat,
   formatWatLongDate,
 } from "@/lib/booking/display-wat";
+import { calculatePackagePrice, getPackageOption } from "@/lib/packages/config";
 import { cn } from "@/lib/utils";
 import { useBookingStore } from "@/stores/bookingStore";
+import { PackageSelector } from "./PackageSelector";
 
 const BOOKING_REASON_OPTIONS = [
   "Anxiety",
@@ -76,6 +78,9 @@ export function GuestBookConfirmClient() {
   const router = useRouter();
   const draft = useBookingStore((s) => s.draft);
   const setDraft = useBookingStore((s) => s.setDraft);
+  const selectedPackage = useBookingStore((s) => s.selectedPackage);
+  const packagePrice = useBookingStore((s) => s.packagePrice);
+  const setSelectedPackage = useBookingStore((s) => s.setSelectedPackage);
 
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [consentLegal, setConsentLegal] = useState(false);
@@ -133,11 +138,17 @@ export function GuestBookConfirmClient() {
     );
   }
 
-  const naira =
+  const nairaBase =
     draft.sessionRateNaira ??
     Math.round(
       Number((draft.sessionRateFormatted || "").replace(/[^\d.]/g, "")) || 0,
     );
+  const selectedPackageOption = getPackageOption(selectedPackage);
+  const calculatedPackagePrice = calculatePackagePrice(
+    nairaBase,
+    selectedPackageOption,
+  ).finalPrice;
+  const naira = packagePrice > 0 ? packagePrice : calculatedPackagePrice;
 
   const photo = draft.profilePhoto || "/Ealho-logo.png";
   const remote = Boolean(draft.profilePhoto?.startsWith("http"));
@@ -180,6 +191,7 @@ export function GuestBookConfirmClient() {
           guestEmail: values.email.trim(),
           guestPhone: values.phone.trim(),
           guestBookingReason: safeReason,
+          packageType: selectedPackageOption.id,
         }),
       });
       const createJson = (await createRes.json()) as {
@@ -191,7 +203,12 @@ export function GuestBookConfirmClient() {
         throw new Error(createJson.error ?? "Could not create booking");
       }
       const bookingId = createJson.data.bookingId;
-      setDraft({ ...d, bookingId });
+      setDraft({
+        ...d,
+        bookingId,
+        selectedPackage: selectedPackageOption.id,
+        packagePrice: naira,
+      });
 
       await fetch("/api/consent", {
         method: "POST",
@@ -209,8 +226,10 @@ export function GuestBookConfirmClient() {
         body: JSON.stringify({
           bookingId,
           email: values.email.trim(),
+          packageType: selectedPackageOption.id,
           metadata: {
             booking_reason: safeReason ?? "",
+            package_type: selectedPackageOption.id,
           },
         }),
       });
@@ -463,6 +482,12 @@ export function GuestBookConfirmClient() {
               </a>
             </span>
           </label>
+          <PackageSelector
+            sessionRate={nairaBase}
+            therapistName={draft.therapistName}
+            selectedPackage={selectedPackage}
+            onSelect={(packageId) => setSelectedPackage(packageId, nairaBase)}
+          />
 
           {payError ? (
             <p className="text-sm text-destructive">{payError}</p>

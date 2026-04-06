@@ -57,6 +57,13 @@ type ClientPayload = {
   sessionCount: number;
   firstSessionDate: string | null;
   lastSessionDate: string | null;
+  activePackage: {
+    id: string;
+    packageType: string;
+    totalSessions: number;
+    remainingSessions: number;
+    expiresAt: string | null;
+  } | null;
 };
 
 function hasMedicalContent(mh: NonNullable<MedicalHistory>): boolean {
@@ -223,6 +230,22 @@ export default function TherapistClientProfilePage() {
             ← Back to clients
           </Link>
         </div>
+        {data.activePackage ? (
+          <div className="mt-3 rounded-lg border border-[#1A7A4A]/20 bg-[#F0FAF4] p-3 text-sm">
+            <p className="font-medium">
+              Active package: {data.activePackage.totalSessions}-session package
+            </p>
+            <p className="text-muted-foreground">
+              {data.activePackage.remainingSessions} sessions remaining
+              {data.activePackage.expiresAt
+                ? ` (expires ${new Date(data.activePackage.expiresAt).toLocaleDateString("en-NG", {
+                    month: "short",
+                    year: "numeric",
+                  })})`
+                : ""}
+            </p>
+          </div>
+        ) : null}
       </header>
 
       <Sheet open={rebookOpen} onOpenChange={setRebookOpen}>

@@ -13,6 +13,7 @@ import { sendTherapyBookingPaidNotifications } from "@/lib/payment/send-therapy-
 import { getPaystackSecretKey } from "@/lib/paystack/server-keys";
 import { prisma } from "@/lib/prisma/client";
 import { chargeSessionRateNgn } from "@/lib/referral/pricing";
+import { calculatePackagePrice, getPackageOption } from "@/lib/packages/config";
 
 function appUrl(): string | null {
   const u = process.env.NEXT_PUBLIC_APP_URL?.trim();
@@ -38,6 +39,7 @@ export async function POST(req: Request) {
       rebookRequestId?: string;
       /** Inline dashboard booking — return to `/dashboard?booking=success&bookingId=…` */
       returnToPatientDashboard?: boolean;
+      packageType?: string;
     };
 
     const bookingId = body.bookingId;
@@ -78,6 +80,8 @@ export async function POST(req: Request) {
     }
 
     const sessionRate = chargeSessionRateNgn(booking);
+    const packageType = getPackageOption(body.packageType ?? "single").id;
+    const packageOption = getPackageOption(packageType);
     const discountInput =
       typeof body.discountCode === "string" ? body.discountCode.trim() : "";
 
@@ -195,11 +199,12 @@ export async function POST(req: Request) {
       );
     }
     const rate = chargeSessionRateNgn(bookingAfterDisc);
+    const packagePricing = calculatePackagePrice(rate, packageOption);
     const discAmt =
       bookingAfterDisc.discountAmount != null
         ? Number(bookingAfterDisc.discountAmount)
         : 0;
-    const chargeNgn = Math.max(0, rate - discAmt);
+    const chargeNgn = Math.max(0, packagePricing.finalPrice - discAmt);
     const amountKobo = formatAmountToKobo(chargeNgn);
 
     const reference = generateReference();
@@ -229,7 +234,14 @@ export async function POST(req: Request) {
     const meta: Record<string, string> = {
       product: "therapy",
       booking_id: bookingId,
+      type: "session_booking",
+      package_type: packageOption.id,
+      sessions: String(packageOption.sessions),
+      therapist_id: booking.therapistId,
     };
+    if (booking.patientId) {
+      meta.patient_id = booking.patientId;
+    }
     if (bookingAfterDisc.discountCode) {
       const dc = await prisma.discountCode.findFirst({
         where: { code: bookingAfterDisc.discountCode },
@@ -283,6 +295,8 @@ export async function POST(req: Request) {
         reference,
         authorization_url: data.data.authorization_url,
         access_code: data.data.access_code,
+        amount: chargeNgn,
+        packageType: packageOption.id,
       },
     });
   } catch {

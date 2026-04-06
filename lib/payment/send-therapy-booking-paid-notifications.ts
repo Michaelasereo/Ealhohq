@@ -10,6 +10,7 @@ export type TherapyBookingWithNotifyInclude = Prisma.TherapyBookingGetPayload<{
   include: {
     therapist: { include: { profile: true } };
     patient: true;
+    package: true;
   };
 }>;
 

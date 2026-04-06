@@ -72,6 +72,24 @@ export async function POST(req: Request) {
     const nextAvailableSlots = enrichSlotsForQuickRebook(rawSlots);
 
     const sessionType = completedCount >= 1 ? "followup" : "intake";
+    const activePackage = await prisma.therapySessionPackage.findFirst({
+      where: {
+        patientId: patient.id,
+        therapistId,
+        status: "active",
+        remainingSessions: { gt: 0 },
+        OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+      },
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        packageType: true,
+        totalSessions: true,
+        usedSessions: true,
+        remainingSessions: true,
+        expiresAt: true,
+      },
+    });
 
     return NextResponse.json({
       success: true,
@@ -86,6 +104,7 @@ export async function POST(req: Request) {
         nextAvailableSlots,
         sessionType,
         sessionCount: completedCount,
+        activePackage,
       },
     });
   } catch (e) {

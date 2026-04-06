@@ -9,6 +9,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { endTimeFromStart } from "@/lib/booking/end-time";
+import { calculatePackagePrice, getPackageOption } from "@/lib/packages/config";
 import { useBookingStore } from "@/stores/bookingStore";
 
 import { AvailabilityCalendar } from "./AvailabilityCalendar";
@@ -115,6 +116,11 @@ export function BookTherapistClient({ confirmHref, usePatient }: Props) {
       sessionType: suggestedType,
       isGuest: !usePatient || !patientId,
       patientId,
+      selectedPackage: "single",
+      packagePrice: calculatePackagePrice(
+        Math.round(therapist.sessionRate),
+        getPackageOption("single"),
+      ).finalPrice,
     });
     router.push(confirmHref);
   }

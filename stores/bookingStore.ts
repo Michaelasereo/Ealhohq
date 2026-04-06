@@ -1,5 +1,6 @@
 import { create } from "zustand";
 
+import { calculatePackagePrice, getPackageOption } from "@/lib/packages/config";
 import type { BookingDraft } from "@/types/booking";
 
 const SPECIALIZATION_OPTIONS = [
@@ -53,6 +54,9 @@ export { SPECIALIZATION_OPTIONS };
 type BookingState = {
   draft: BookingDraft | null;
   setDraft: (draft: BookingDraft | null) => void;
+  selectedPackage: string;
+  packagePrice: number;
+  setSelectedPackage: (packageId: string, sessionRate: number) => void;
   reset: () => void;
   therapistEnroll: TherapistEnrollDraft | null;
   setTherapistEnroll: (partial: Partial<TherapistEnrollDraft> | null) => void;
@@ -65,8 +69,36 @@ type BookingState = {
 
 export const useBookingStore = create<BookingState>((set) => ({
   draft: null,
-  setDraft: (draft) => set({ draft }),
-  reset: () => set({ draft: null }),
+  selectedPackage: "single",
+  packagePrice: 0,
+  setDraft: (draft) =>
+    set((state) => ({
+      draft: draft
+        ? {
+            ...draft,
+            selectedPackage: draft.selectedPackage ?? state.selectedPackage,
+            packagePrice: draft.packagePrice ?? state.packagePrice,
+          }
+        : null,
+      selectedPackage: draft?.selectedPackage ?? state.selectedPackage,
+      packagePrice: draft?.packagePrice ?? state.packagePrice,
+    })),
+  setSelectedPackage: (packageId, sessionRate) => {
+    const option = getPackageOption(packageId);
+    const pricing = calculatePackagePrice(sessionRate, option);
+    set((state) => ({
+      selectedPackage: option.id,
+      packagePrice: pricing.finalPrice,
+      draft: state.draft
+        ? {
+            ...state.draft,
+            selectedPackage: option.id,
+            packagePrice: pricing.finalPrice,
+          }
+        : state.draft,
+    }));
+  },
+  reset: () => set({ draft: null, selectedPackage: "single", packagePrice: 0 }),
   therapistEnroll: null,
   bookingModalOpen: false,
   setBookingModalOpen: (open) => set({ bookingModalOpen: open }),

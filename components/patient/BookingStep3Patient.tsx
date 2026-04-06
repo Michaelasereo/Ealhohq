@@ -676,18 +676,18 @@ export function BookingStep3Patient({ data, onUpdate, onBack, onComplete }: Prop
         <div className="space-y-2">
           <p className="text-xs font-semibold text-gray-700">Discount code</p>
           {discountResult ? (
-            <div className="flex items-center justify-between rounded-xl border border-green-200 bg-green-50 px-4 py-3">
+            <div className="flex items-center justify-between rounded-xl border border-primary/30 bg-primary/5 px-4 py-3">
               <div className="flex min-w-0 items-center gap-2">
                 <Check
                   size={14}
                   strokeWidth={2.5}
-                  className="shrink-0 text-green-600"
+                  className="shrink-0 text-primary"
                 />
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold text-green-800">
+                  <p className="text-sm font-semibold text-primary">
                     {discountCode} applied
                   </p>
-                  <p className="text-xs text-green-600">
+                  <p className="text-xs text-primary/80">
                     {discountResult.isFree
                       ? "Session is completely free!"
                       : `₦${discountResult.discountAmount.toLocaleString()} discount applied`}
@@ -701,7 +701,7 @@ export function BookingStep3Patient({ data, onUpdate, onBack, onComplete }: Prop
                   setDiscountCode("");
                   setDiscountError("");
                 }}
-                className="ml-3 shrink-0 text-xs text-green-600 underline hover:text-green-800"
+                className="ml-3 shrink-0 text-xs text-primary underline hover:text-primary/80"
               >
                 Remove
               </button>

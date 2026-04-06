@@ -31,6 +31,9 @@ type AdminDashboardPayload = {
     totalTherapists: number;
     pendingTherapists: number;
     sessionsThisMonth: number;
+    activePackagesCount: number;
+    packageRevenueThisMonth: number;
+    packageConversionRate: number;
   };
   pendingApplications: PendingApplication[];
 };
@@ -177,6 +180,30 @@ export default function AdminDashboardPage() {
             <CardDescription>Sessions this month</CardDescription>
             <CardTitle className="text-2xl tabular-nums">
               {stats.sessionsThisMonth}
+            </CardTitle>
+          </CardHeader>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardDescription>Active packages</CardDescription>
+            <CardTitle className="text-2xl tabular-nums">
+              {stats.activePackagesCount}
+            </CardTitle>
+          </CardHeader>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardDescription>Package revenue (month)</CardDescription>
+            <CardTitle className="text-2xl tabular-nums">
+              ₦{stats.packageRevenueThisMonth.toLocaleString("en-NG")}
+            </CardTitle>
+          </CardHeader>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardDescription>Package conversion</CardDescription>
+            <CardTitle className="text-2xl tabular-nums">
+              {stats.packageConversionRate}%
             </CardTitle>
           </CardHeader>
         </Card>

@@ -31,6 +31,11 @@ type BookingRow = {
   status: string;
   sessionType: string;
   patient: { id: string; fullName: string; email: string } | null;
+  package: {
+    totalSessions: number;
+    usedSessions: number;
+    packageType: string;
+  } | null;
   session: {
     id: string;
     sessionNumber: number;
@@ -124,6 +129,12 @@ function SessionCard({
               {b.professionalType ? (
                 <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-500">
                   {b.professionalType}
+                </span>
+              ) : null}
+              {b.package ? (
+                <span className="rounded-full bg-[#1A7A4A]/10 px-2 py-0.5 text-xs text-[#1A7A4A]">
+                  📦 Package · {Math.min(b.package.usedSessions, b.package.totalSessions)} of{" "}
+                  {b.package.totalSessions}
                 </span>
               ) : null}
             </div>

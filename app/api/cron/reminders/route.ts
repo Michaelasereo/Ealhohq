@@ -175,12 +175,66 @@ See you soon! 💙`;
       console.error("cron chat SLA:", chatErr);
     }
 
+    const nowDate = new Date(now);
+    const in30 = new Date(now + 30 * 24 * 60 * 60 * 1000);
+    const in7 = new Date(now + 7 * 24 * 60 * 60 * 1000);
+
+    const expiring30 = await prisma.therapySessionPackage.findMany({
+      where: {
+        status: "active",
+        remainingSessions: { gt: 0 },
+        expiresAt: { gte: nowDate, lte: in30 },
+      },
+      include: {
+        patient: true,
+        therapist: { include: { profile: true } },
+      },
+    });
+    const expiring7 = expiring30.filter((p) => {
+      if (!p.expiresAt) return false;
+      return p.expiresAt.getTime() <= in7.getTime();
+    });
+
+    for (const p of expiring30) {
+      const to = normalizeNgDigits(p.patient.phone ?? null);
+      if (!to) continue;
+      const therapistName = therapistPublicLabel(p.therapist.profile.fullName);
+      const body = `Hi ${firstName(p.patient.fullName)}! Your ${p.totalSessions}-session package with ${therapistName} expires in 30 days and you have ${p.remainingSessions} sessions left.\n\nBook your remaining sessions here:\nealho.com/book`;
+      await sendWhatsAppText({ toE164Digits: to, body });
+    }
+    for (const p of expiring7) {
+      const to = normalizeNgDigits(p.patient.phone ?? null);
+      if (!to) continue;
+      const therapistName = therapistPublicLabel(p.therapist.profile.fullName);
+      const body = `Hi ${firstName(p.patient.fullName)}! Reminder: your ${p.totalSessions}-session package with ${therapistName} expires in 7 days. You still have ${p.remainingSessions} sessions left.\n\nBook now:\nealho.com/book`;
+      await sendWhatsAppText({ toE164Digits: to, body });
+    }
+
+    const expiredPackages = await prisma.therapySessionPackage.findMany({
+      where: { status: "active", expiresAt: { lt: nowDate } },
+      include: { patient: true, therapist: { include: { profile: true } } },
+    });
+    for (const p of expiredPackages) {
+      await prisma.therapySessionPackage.update({
+        where: { id: p.id },
+        data: { status: "expired" },
+      });
+      const to = normalizeNgDigits(p.patient.phone ?? null);
+      if (!to) continue;
+      const therapistName = therapistPublicLabel(p.therapist.profile.fullName);
+      const body = `Your ${p.totalSessions}-session package with ${therapistName} has expired. ${p.usedSessions} of ${p.totalSessions} sessions were used.\n\nStart a new package anytime:\nealho.com/book`;
+      await sendWhatsAppText({ toE164Digits: to, body });
+    }
+
     return NextResponse.json({
       success: true,
       processed: bookings.length,
       sent24h: sent24,
       sent1h: sent1,
       rebookRequestsExpired: rebookExpired,
+      packagesExpiring30d: expiring30.length,
+      packagesExpiring7d: expiring7.length,
+      packagesExpired: expiredPackages.length,
       chatSla,
     });
   } catch (e) {

@@ -17,4 +17,6 @@ export type BookingDraft = {
   isGuest?: boolean;
   patientId?: string;
   bookingId?: string;
+  selectedPackage?: string;
+  packagePrice?: number;
 };

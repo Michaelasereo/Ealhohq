@@ -1,12 +1,19 @@
 import { Prisma, type DiscountCode } from "@prisma/client";
 
+import {
+  calculatePackagePrice,
+  getPackageExpiry,
+  getPackageOption,
+} from "@/lib/packages/config";
 import { prisma } from "@/lib/prisma/client";
+import { chargeSessionRateNgn } from "@/lib/referral/pricing";
 
 const TX_OPTS = { timeout: 10_000 } as const;
 
 const bookingInclude = {
   therapist: { include: { profile: true } },
   patient: true,
+  package: true,
 } as const;
 
 /**
@@ -16,7 +23,9 @@ const bookingInclude = {
 export async function finalizeTherapyPayment(
   bookingId: string,
   paystackReference: string,
+  packageType = "single",
 ) {
+  const packageOption = getPackageOption(packageType);
   const existingSession = await prisma.therapySession.findUnique({
     where: { bookingId },
   });
@@ -65,6 +74,30 @@ export async function finalizeTherapyPayment(
       status: "scheduled",
     },
   });
+
+  if (packageOption.id !== "single" && booking.patientId) {
+    const pricing = calculatePackagePrice(chargeSessionRateNgn(booking), packageOption);
+    const createdPackage = await prisma.therapySessionPackage.create({
+      data: {
+        patientId: booking.patientId,
+        therapistId: booking.therapistId,
+        packageType: packageOption.id,
+        totalSessions: packageOption.sessions,
+        usedSessions: 1,
+        remainingSessions: Math.max(0, packageOption.sessions - 1),
+        pricePerSession: new Prisma.Decimal(String(pricing.pricePerSession)),
+        totalPaid: new Prisma.Decimal(String(pricing.finalPrice)),
+        discountPercent: packageOption.discountPercent,
+        paystackReference,
+        status: "active",
+        expiresAt: getPackageExpiry(),
+      },
+    });
+    await prisma.therapyBooking.update({
+      where: { id: booking.id },
+      data: { packageId: createdPackage.id },
+    });
+  }
 
   return {
     booking,
@@ -155,6 +188,98 @@ export async function finalizeTherapyPaymentWithCredits(bookingId: string) {
         booking,
         sessionId: session.id,
         shouldSendConfirmationEmail: true,
+      };
+    },
+    TX_OPTS,
+  );
+}
+
+/**
+ * Confirm a booking by consuming one active package session.
+ */
+export async function finalizeTherapyPaymentWithPackageCredit(params: {
+  bookingId: string;
+  packageId: string;
+}) {
+  const { bookingId, packageId } = params;
+  return prisma.$transaction(
+    async (tx) => {
+      const existingSession = await tx.therapySession.findUnique({
+        where: { bookingId },
+      });
+
+      const bookingRow = await tx.therapyBooking.findUnique({
+        where: { id: bookingId },
+        include: bookingInclude,
+      });
+      if (!bookingRow?.patientId) {
+        throw new Error("Booking not found or has no client");
+      }
+
+      const pkg = await tx.therapySessionPackage.findUnique({
+        where: { id: packageId },
+      });
+      if (!pkg) throw new Error("Package not found");
+      if (pkg.patientId !== bookingRow.patientId) throw new Error("Package mismatch");
+      if (pkg.therapistId !== bookingRow.therapistId) throw new Error("Therapist mismatch");
+      if (pkg.status !== "active") throw new Error("Package not active");
+      if (pkg.expiresAt && pkg.expiresAt < new Date()) throw new Error("Package expired");
+      if (pkg.remainingSessions <= 0) throw new Error("No sessions remaining");
+
+      if (existingSession) {
+        return {
+          booking: bookingRow,
+          sessionId: existingSession.id,
+          shouldSendConfirmationEmail: false,
+          packageExhausted: pkg.remainingSessions - 1 <= 0,
+        };
+      }
+
+      const booking = await tx.therapyBooking.update({
+        where: { id: bookingId },
+        data: {
+          status: "confirmed",
+          paymentStatus: "package_credit",
+          paidWithCredits: false,
+          paystackReference: `package:${packageId}:${bookingId}`,
+          packageId: pkg.id,
+        },
+        include: bookingInclude,
+      });
+
+      const nextRemaining = Math.max(0, pkg.remainingSessions - 1);
+      await tx.therapySessionPackage.update({
+        where: { id: pkg.id },
+        data: {
+          usedSessions: { increment: 1 },
+          remainingSessions: { decrement: 1 },
+          status: nextRemaining <= 0 ? "exhausted" : "active",
+        },
+      });
+
+      const previousSessions = await tx.therapySession.count({
+        where: {
+          therapistId: booking.therapistId,
+          patientId: booking.patientId,
+        },
+      });
+
+      const session = await tx.therapySession.create({
+        data: {
+          bookingId: booking.id,
+          therapistId: booking.therapistId,
+          patientId: booking.patientId,
+          sessionNumber: previousSessions + 1,
+          format: "telehealth",
+          status: "scheduled",
+        },
+      });
+
+      return {
+        booking,
+        sessionId: session.id,
+        shouldSendConfirmationEmail: true,
+        packageExhausted: nextRemaining <= 0,
       };
     },
     TX_OPTS,

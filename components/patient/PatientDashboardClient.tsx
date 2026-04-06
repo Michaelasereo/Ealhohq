@@ -88,6 +88,16 @@ type SessionsData = {
   past: PatientSessionView[];
 };
 
+type ActivePackage = {
+  id: string;
+  packageType: string;
+  totalSessions: number;
+  usedSessions: number;
+  remainingSessions: number;
+  expiresAt: string | null;
+  therapist: { id: string; name: string; photo: string };
+};
+
 type ProfileData = {
   id: string;
   fullName: string;
@@ -242,6 +252,22 @@ export function PatientDashboardClient() {
       if (r.status === 401) throw new Error("Please sign in again.");
       if (!r.ok) throw new Error(j.error ?? "Failed to load sessions");
       return j.data!;
+    },
+    enabled: activeTab === "sessions",
+  });
+
+  const packagesQ = useQuery({
+    queryKey: ["patient-packages"],
+    queryFn: async () => {
+      const r = await fetch("/api/patient/packages", { credentials: "include" });
+      const j = (await r.json()) as {
+        success?: boolean;
+        data?: { packages: ActivePackage[] };
+        error?: string;
+      };
+      if (r.status === 401) throw new Error("Please sign in again.");
+      if (!r.ok || !j.success) throw new Error(j.error ?? "Failed to load packages");
+      return j.data?.packages ?? [];
     },
     enabled: activeTab === "sessions",
   });
@@ -660,6 +686,60 @@ export function PatientDashboardClient() {
             </p>
           ) : (
             <Tabs value={sessionTab} onValueChange={setSessionTab}>
+              {packagesQ.data && packagesQ.data.length > 0 ? (
+                <div className="mb-4 space-y-2 rounded-xl border p-3">
+                  <h2 className="text-base font-semibold">Your Session Packages</h2>
+                  {packagesQ.data.map((pkg) => {
+                    const progress = Math.min(
+                      100,
+                      Math.round((pkg.usedSessions / Math.max(1, pkg.totalSessions)) * 100),
+                    );
+                    return (
+                      <div key={pkg.id} className="rounded-lg border p-3">
+                        <p className="font-medium">{pkg.therapist.name}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {pkg.packageType.replace("_", "-").replace("package-", "")}
+                          -session package
+                        </p>
+                        <div className="mt-2 h-2 w-full rounded-full bg-muted">
+                          <div
+                            className="h-2 rounded-full bg-[#1A7A4A]"
+                            style={{ width: `${progress}%` }}
+                          />
+                        </div>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {pkg.usedSessions} of {pkg.totalSessions} sessions used
+                        </p>
+                        <p className="mt-2 text-sm">{pkg.remainingSessions} sessions remaining</p>
+                        <p className="text-xs text-muted-foreground">
+                          Valid until:{" "}
+                          {pkg.expiresAt
+                            ? new Date(pkg.expiresAt).toLocaleDateString("en-NG", {
+                                day: "2-digit",
+                                month: "short",
+                                year: "numeric",
+                              })
+                            : "—"}
+                        </p>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="mt-2 min-h-11 w-full border-primary text-primary hover:bg-primary/10"
+                          onClick={() =>
+                            setQuickRebook({
+                              id: pkg.therapist.id,
+                              name: pkg.therapist.name,
+                              photo: pkg.therapist.photo,
+                            })
+                          }
+                        >
+                          Book Next Session →
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : null}
               <TabsList className="w-full">
                 <TabsTrigger value="upcoming">Upcoming</TabsTrigger>
                 <TabsTrigger value="past">Past</TabsTrigger>
