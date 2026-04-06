@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { resolveAppRole } from "@/lib/auth/resolve-app-role";
 import { chatDeletionGraceDays } from "@/lib/chat/deletion-schedule";
 import { ensureRegisteredPatientForUser } from "@/lib/queries/patient";
 import { prisma } from "@/lib/prisma/client";
@@ -17,7 +18,7 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const role = user.app_metadata?.role as string | undefined;
+    const role = await resolveAppRole(user.id);
     if (role !== "patient") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }

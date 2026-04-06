@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma/client";
 import { getTherapistByProfileId } from "@/lib/queries/patient";
 import { createClient } from "@/lib/supabase/server";
+import { therapistPublicLabel } from "@/lib/therapist-display-name";
 import { bookingDateStartToIso } from "@/lib/wat-datetime";
 
 type Ctx = { params: Promise<{ requestId: string }> };
@@ -26,7 +27,9 @@ export async function GET(_req: Request, ctx: Ctx) {
 
     const now = new Date();
     const expired = reqRow.expiresAt < now;
-    const therapistName = reqRow.therapist.profile.fullName;
+    const therapistName = therapistPublicLabel(
+      reqRow.therapist.profile.fullName,
+    );
     const photo =
       reqRow.therapist.profilePhoto ?? "/Ealho-logo.png";
     const startIso = bookingDateStartToIso(

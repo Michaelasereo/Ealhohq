@@ -82,7 +82,7 @@ export default function AdminPatientsPage() {
     <div className="mx-auto max-w-6xl space-y-6 px-4 py-8 md:px-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Patients</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Clients</h1>
           <p className="text-muted-foreground text-sm">
             Accounts, credits, and session counts.
           </p>
@@ -92,7 +92,7 @@ export default function AdminPatientsPage() {
           onClick={() => setInviteOpen(true)}
         >
           <UserPlus className="mr-2 size-4" strokeWidth={1.5} />
-          Invite patient
+          Invite client
         </Button>
       </div>
 

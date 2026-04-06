@@ -9,10 +9,13 @@ import {
   watDayStart,
   watTodayDateString,
 } from "@/lib/wat-datetime";
+import { therapistFirstNameForGreeting } from "@/lib/therapist-display-name";
 import { watCurrentMonthStart } from "@/lib/wat-month";
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
+    const zone = new URL(req.url).searchParams.get("zone");
+
     const supabase = await createClient();
     const {
       data: { user },
@@ -33,7 +36,139 @@ export async function GET() {
     const weekEnd = watDayEnd(weekEndYmd);
     const monthStart = watCurrentMonthStart();
 
-    const [todaySessions, upcomingSessions, sessionsThisWeek, totalClients, monthBookings, pendingNotes] =
+    const rate = Number(therapist.sessionRate);
+    const fullName = therapist.profile.fullName?.trim() ?? "";
+    const therapistFirstName = therapistFirstNameForGreeting(fullName);
+
+    const therapistPayload = {
+      id: therapist.id,
+      status: therapist.status,
+      sessionRate: rate,
+      sessionDuration: therapist.sessionDuration,
+      profilePhoto: therapist.profilePhoto,
+      therapistFirstName,
+    };
+
+    if (zone === "stats") {
+      const [
+        sessionsToday,
+        sessionsThisWeek,
+        totalClients,
+        monthEarningsAgg,
+        pendingNotes,
+      ] = await Promise.all([
+        prisma.therapyBooking.count({
+          where: {
+            therapistId: therapist.id,
+            date: { gte: todayStart, lte: todayEnd },
+            status: { in: ["confirmed", "completed"] },
+          },
+        }),
+        prisma.therapyBooking.count({
+          where: {
+            therapistId: therapist.id,
+            date: { gte: todayStart, lte: weekEnd },
+            status: { in: ["confirmed", "completed"] },
+          },
+        }),
+        prisma.therapyPatient.count({
+          where: {
+            bookings: { some: { therapistId: therapist.id } },
+          },
+        }),
+        prisma.therapySession.aggregate({
+          where: {
+            therapistId: therapist.id,
+            status: "completed",
+            booking: {
+              paymentStatus: "paid",
+              date: { gte: monthStart },
+            },
+          },
+          _sum: { therapistEarnings: true },
+        }),
+        prisma.therapySessionNote.count({
+          where: {
+            therapistId: therapist.id,
+            isEdited: false,
+            session: { notesGenerated: true },
+          },
+        }),
+      ]);
+
+      const earningsThisMonth = Number(
+        monthEarningsAgg._sum.therapistEarnings ?? 0,
+      );
+
+      return NextResponse.json({
+        success: true,
+        data: {
+          therapist: therapistPayload,
+          stats: {
+            sessionsToday,
+            sessionsThisWeek,
+            totalClients,
+            earningsThisMonth,
+            pendingNotes,
+          },
+        },
+      });
+    }
+
+    if (zone === "today") {
+      const todaySessions = await prisma.therapyBooking.findMany({
+        where: {
+          therapistId: therapist.id,
+          date: { gte: todayStart, lte: todayEnd },
+          status: { in: ["confirmed", "completed"] },
+        },
+        include: {
+          patient: { select: { fullName: true, email: true } },
+          session: {
+            select: {
+              id: true,
+              status: true,
+              notesGenerated: true,
+              sessionNumber: true,
+            },
+          },
+        },
+        orderBy: { startTime: "asc" },
+      });
+      return NextResponse.json({
+        success: true,
+        data: { todaySessions },
+      });
+    }
+
+    if (zone === "upcoming") {
+      const upcomingSessions = await prisma.therapyBooking.findMany({
+        where: {
+          therapistId: therapist.id,
+          date: { gt: todayEnd, lte: weekEnd },
+          status: "confirmed",
+        },
+        include: {
+          patient: { select: { fullName: true } },
+          session: {
+            select: {
+              id: true,
+              sessionNumber: true,
+              notesGenerated: true,
+              status: true,
+            },
+          },
+        },
+        orderBy: [{ date: "asc" }, { startTime: "asc" }],
+        take: 10,
+      });
+      return NextResponse.json({
+        success: true,
+        data: { upcomingSessions },
+      });
+    }
+
+    const [todaySessions, upcomingSessions, sessionsThisWeek, totalClients, monthEarningsAgg, pendingNotes] =
       await Promise.all([
         prisma.therapyBooking.findMany({
           where: {
@@ -86,13 +221,16 @@ export async function GET() {
             bookings: { some: { therapistId: therapist.id } },
           },
         }),
-        prisma.therapyBooking.findMany({
+        prisma.therapySession.aggregate({
           where: {
             therapistId: therapist.id,
-            date: { gte: monthStart },
-            paymentStatus: "paid",
+            status: "completed",
+            booking: {
+              paymentStatus: "paid",
+              date: { gte: monthStart },
+            },
           },
-          select: { id: true },
+          _sum: { therapistEarnings: true },
         }),
         prisma.therapySessionNote.count({
           where: {
@@ -103,23 +241,14 @@ export async function GET() {
         }),
       ]);
 
-    const rate = Number(therapist.sessionRate);
-    const earningsThisMonth = monthBookings.length * rate;
-
-    const fullName = therapist.profile.fullName?.trim() ?? "";
-    const therapistFirstName = fullName.split(/\s+/)[0] ?? "there";
+    const earningsThisMonth = Number(
+      monthEarningsAgg._sum.therapistEarnings ?? 0,
+    );
 
     return NextResponse.json({
       success: true,
       data: {
-        therapist: {
-          id: therapist.id,
-          status: therapist.status,
-          sessionRate: rate,
-          sessionDuration: therapist.sessionDuration,
-          profilePhoto: therapist.profilePhoto,
-          therapistFirstName,
-        },
+        therapist: therapistPayload,
         stats: {
           sessionsToday: todaySessions.length,
           sessionsThisWeek,

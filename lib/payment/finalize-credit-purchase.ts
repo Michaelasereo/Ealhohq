@@ -36,7 +36,7 @@ export async function finalizeCreditPurchase(params: {
     await tx.therapyCredit.update({
       where: { patientId },
       data: {
-        tier: tierFromBalance(row.balance),
+        tier: tierFromBalance(Number(row.balance)),
       },
     });
 
@@ -48,7 +48,7 @@ export async function finalizeCreditPurchase(params: {
         reference: paystackReference,
       },
     });
-  });
+  }, { timeout: 10_000 });
 
   void packageKey;
   return { alreadyApplied: false as const };

@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { getPatientByProfileId } from "@/lib/queries/patient";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma/client";
+import { therapistPublicLabel } from "@/lib/therapist-display-name";
 import { bookingDateStartToIso } from "@/lib/wat-datetime";
 import { watDayStart, watTodayDateString } from "@/lib/wat-datetime";
 
@@ -14,6 +15,8 @@ function mapBooking(
     endTime: string;
     status: string;
     sessionType: string;
+    paidWithCredits: boolean;
+    rescheduleCount: number;
     therapist: {
       id: string;
       profilePhoto: string | null;
@@ -33,9 +36,11 @@ function mapBooking(
     endTime: b.endTime,
     status: b.status,
     sessionType: b.sessionType,
+    paidWithCredits: b.paidWithCredits,
+    rescheduleCount: b.rescheduleCount,
     therapist: {
       id: b.therapist.id,
-      name: b.therapist.profile.fullName,
+      name: therapistPublicLabel(b.therapist.profile.fullName),
       photo: b.therapist.profilePhoto ?? "/Ealho-logo.png",
     },
     session: b.session
@@ -123,7 +128,7 @@ export async function GET() {
       data: { upcoming, past },
     });
   } catch (e) {
-    console.error("patient/sessions GET:", e);
+    console.error("client sessions GET:", e);
     return NextResponse.json(
       { error: "Failed to fetch sessions" },
       { status: 500 },

@@ -11,6 +11,7 @@ import { Check, Star } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 const moods = ["😞", "😐", "🙂", "😊", "😄"] as const;
 
@@ -71,6 +72,7 @@ export default function FeedbackPage() {
     },
     onSuccess: () => {
       setThankYou(true);
+      toast.success("Thank you for your feedback! 🙏");
       void queryClient.invalidateQueries({
         queryKey: ["patient-feedback-meta", sessionId],
       });
@@ -106,7 +108,7 @@ export default function FeedbackPage() {
     return (
       <main className="mx-auto w-full max-w-[375px] space-y-4 p-4 pb-24 md:pb-8">
         <p className="text-sm text-muted-foreground">
-          Complete your patient profile before leaving session feedback.
+          Complete your client profile before leaving session feedback.
         </p>
         <Link
           href="/profile"
@@ -151,7 +153,7 @@ export default function FeedbackPage() {
           Your therapist appreciates it. See you next time.
         </p>
         <Link
-          href="/book"
+          href="/dashboard?view=book"
           className={cn(
             buttonVariants({ variant: "default" }),
             "mt-8 min-h-12 w-full max-w-sm",

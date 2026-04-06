@@ -1,5 +1,5 @@
 /**
- * Therapist-facing patient label for a booking (never exposes real guest name when anonymous).
+ * Therapist-facing client label for a booking (never exposes real guest name when anonymous).
  */
 export function getDisplayName(booking: {
   isAnonymous: boolean;

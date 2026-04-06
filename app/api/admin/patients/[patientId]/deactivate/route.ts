@@ -22,7 +22,7 @@ export async function PUT(_req: Request, ctx: Ctx) {
       where: { id: patientId },
     });
     if (!patient) {
-      return NextResponse.json({ error: "Patient not found" }, { status: 404 });
+      return NextResponse.json({ error: "Client not found" }, { status: 404 });
     }
 
     if (patient.profileId) {
@@ -55,7 +55,7 @@ export async function PUT(_req: Request, ctx: Ctx) {
 
     return NextResponse.json({ success: true });
   } catch (e) {
-    console.error("Deactivate patient:", e);
+    console.error("Deactivate client:", e);
     return NextResponse.json(
       { error: "Failed to deactivate patient" },
       { status: 500 },

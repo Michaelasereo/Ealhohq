@@ -19,7 +19,7 @@ export async function POST() {
     const patient = await getPatientByProfileId(user.id);
     if (!patient) {
       return NextResponse.json(
-        { error: "Patient profile not found" },
+        { error: "Client profile not found" },
         { status: 404 },
       );
     }
@@ -78,7 +78,7 @@ export async function POST() {
 
     return NextResponse.json({ success: true, data: payload });
   } catch (e) {
-    console.error("patient data-export:", e);
+    console.error("client data-export:", e);
     return NextResponse.json(
       { error: "Failed to export data" },
       { status: 500 },

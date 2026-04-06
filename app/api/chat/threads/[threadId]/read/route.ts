@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { resolveAppRole } from "@/lib/auth/resolve-app-role";
 import { prisma } from "@/lib/prisma/client";
 import { createClient } from "@/lib/supabase/server";
 
@@ -35,7 +36,7 @@ export async function POST(_req: Request, ctx: Ctx) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const role = user.app_metadata?.role as string | undefined;
+    const role = await resolveAppRole(user.id);
     if (role !== "patient" && role !== "therapist") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }

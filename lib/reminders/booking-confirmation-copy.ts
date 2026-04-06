@@ -30,7 +30,7 @@ Your therapy session is confirmed.
 
 🗓 Date: ${params.dateLine}
 🕐 Time: ${params.timeWat} WAT
-👨‍⚕️ Therapist: ${params.therapistName}
+${params.therapistName}
 
 Join here: ${params.joinUrl}
 

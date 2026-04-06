@@ -5,10 +5,10 @@ import { SetupWizard } from "./SetupWizard";
 
 function SetupFallback() {
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-[375px] flex-col items-center justify-center px-4 py-8">
+    <div className="flex flex-col items-center justify-center py-16">
       <Loader2 className="size-8 animate-spin text-muted-foreground" aria-hidden />
       <p className="mt-4 text-sm text-muted-foreground">Loading…</p>
-    </main>
+    </div>
   );
 }
 

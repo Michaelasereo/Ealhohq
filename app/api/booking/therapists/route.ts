@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { formatNaira } from "@/lib/format/currency";
 import { getApprovedTherapists } from "@/lib/queries/therapists";
+import { therapistPublicLabel } from "@/lib/therapist-display-name";
 
 function serializeTherapist(t: Awaited<ReturnType<typeof getApprovedTherapists>>[number]) {
   return {
@@ -16,7 +17,10 @@ function serializeTherapist(t: Awaited<ReturnType<typeof getApprovedTherapists>>
     sessionRateFormatted: formatNaira(t.sessionRate),
     sessionDuration: t.sessionDuration,
     createdAt: t.createdAt.toISOString(),
-    profile: t.profile,
+    profile: {
+      ...t.profile,
+      fullName: therapistPublicLabel(t.profile.fullName),
+    },
     availabilitySchedule: t.availabilitySchedule,
   };
 }

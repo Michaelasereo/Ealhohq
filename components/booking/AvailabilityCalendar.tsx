@@ -3,7 +3,8 @@
 import { useMemo, useState } from "react";
 import { useQueries } from "@tanstack/react-query";
 
-import { Skeleton } from "@/components/ui/skeleton";
+import { LoadingWithCopy } from "@/components/shared/LoadingWithCopy";
+import { BOOKING_MESSAGES } from "@/lib/loading-messages";
 import { addWatDays, getCalendarCells, watTodayDateString } from "@/lib/wat-datetime";
 
 import { SlotPicker } from "./SlotPicker";
@@ -137,8 +138,8 @@ export function AvailabilityCalendar({
         </div>
 
         {loadingSlots ? (
-          <div className="space-y-2">
-            <Skeleton className="h-40 w-full" />
+          <div className="flex min-h-[200px] items-center justify-center py-6">
+            <LoadingWithCopy messages={[...BOOKING_MESSAGES]} size="sm" />
           </div>
         ) : slotError ? (
           <p className="text-center text-sm text-destructive">

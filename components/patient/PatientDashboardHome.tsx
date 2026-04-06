@@ -5,9 +5,11 @@ import { Calendar } from "lucide-react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 
+import { LoadingWithCopy } from "@/components/shared/LoadingWithCopy";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { DASHBOARD_MESSAGES } from "@/lib/loading-messages";
 import { canJoinSessionTenMinutesBefore } from "@/lib/patient/join-eligibility";
 import { bookingDateStartToIso, formatWAT } from "@/lib/wat-datetime";
 import { cn } from "@/lib/utils";
@@ -119,11 +121,23 @@ const TIER_RING: Record<string, string> = {
   platinum: "border-violet-200 bg-violet-50 text-violet-900",
 };
 
-async function fetchDashboard(): Promise<DashboardData> {
-  const r = await fetch("/api/patient/dashboard", { credentials: "include" });
+type StatsZone = {
+  firstName: string;
+  totalSessions: number;
+  credits: { balance: number; tier: string };
+};
+
+type NextZone = { upcomingSession: DashboardData["upcomingSession"] };
+
+type RecentZone = { recentSessions: DashboardData["recentSessions"] };
+
+async function fetchStatsZone(): Promise<StatsZone> {
+  const r = await fetch("/api/patient/dashboard?zone=stats", {
+    credentials: "include",
+  });
   const j = (await r.json()) as {
     success?: boolean;
-    data?: DashboardData;
+    data?: StatsZone;
     error?: string;
   };
   if (!r.ok || !j.success || !j.data) {
@@ -132,38 +146,84 @@ async function fetchDashboard(): Promise<DashboardData> {
   return j.data;
 }
 
-export function PatientDashboardHome() {
-  const { data, isLoading, isError, error } = useQuery({
-    queryKey: ["patient-dashboard-home"],
-    queryFn: fetchDashboard,
+async function fetchNextZone(): Promise<NextZone> {
+  const r = await fetch("/api/patient/dashboard?zone=next", {
+    credentials: "include",
+  });
+  const j = (await r.json()) as {
+    success?: boolean;
+    data?: NextZone;
+    error?: string;
+  };
+  if (!r.ok || !j.success || !j.data) {
+    throw new Error(j.error ?? "Failed to load");
+  }
+  return j.data;
+}
+
+async function fetchRecentZone(): Promise<RecentZone> {
+  const r = await fetch("/api/patient/dashboard?zone=recent", {
+    credentials: "include",
+  });
+  const j = (await r.json()) as {
+    success?: boolean;
+    data?: RecentZone;
+    error?: string;
+  };
+  if (!r.ok || !j.success || !j.data) {
+    throw new Error(j.error ?? "Failed to load");
+  }
+  return j.data;
+}
+
+export interface PatientDashboardHomeProps {
+  onBookSession: () => void;
+}
+
+export function PatientDashboardHome({ onBookSession }: PatientDashboardHomeProps) {
+  const statsQ = useQuery({
+    queryKey: ["patient-dashboard", "stats"],
+    queryFn: fetchStatsZone,
+  });
+  const nextQ = useQuery({
+    queryKey: ["patient-dashboard", "next"],
+    queryFn: fetchNextZone,
+  });
+  const recentQ = useQuery({
+    queryKey: ["patient-dashboard", "recent"],
+    queryFn: fetchRecentZone,
   });
 
-  if (isLoading) {
+  const firstPaint =
+    statsQ.isPending && statsQ.fetchStatus === "fetching" && !statsQ.data;
+
+  if (firstPaint) {
     return (
-      <main className="mx-auto w-full max-w-lg space-y-6 p-4 pb-24 md:pb-8">
-        <Skeleton className="h-10 w-2/3" />
-        <Skeleton className="h-48 w-full rounded-2xl" />
-        <div className="grid grid-cols-3 gap-2">
-          <Skeleton className="h-24" />
-          <Skeleton className="h-24" />
-          <Skeleton className="h-24" />
-        </div>
-        <Skeleton className="h-32 w-full" />
+      <main className="mx-auto flex min-h-[60vh] w-full max-w-lg flex-col items-center justify-center p-4 pb-24 md:pb-8">
+        <LoadingWithCopy
+          messages={[...DASHBOARD_MESSAGES]}
+          size="lg"
+          showProgressBar
+          estimatedSeconds={4}
+        />
       </main>
     );
   }
 
-  if (isError || !data) {
+  if (statsQ.isError || !statsQ.data) {
     return (
       <main className="mx-auto max-w-lg p-4">
         <p className="text-destructive">
-          {error instanceof Error ? error.message : "Error"}
+          {statsQ.error instanceof Error
+            ? statsQ.error.message
+            : "Error"}
         </p>
       </main>
     );
   }
 
-  const up = data.upcomingSession;
+  const data = statsQ.data;
+  const up = nextQ.data?.upcomingSession ?? null;
   const startIso = up
     ? bookingDateStartToIso(new Date(up.date), up.startTime)
     : null;
@@ -187,7 +247,15 @@ export function PatientDashboardHome() {
         </p>
       </header>
 
-      {up && startIso ? (
+      {nextQ.isPending ? (
+        <Skeleton className="h-56 w-full rounded-2xl" />
+      ) : nextQ.isError ? (
+        <p className="text-sm text-destructive">
+          {nextQ.error instanceof Error
+            ? nextQ.error.message
+            : "Could not load next session."}
+        </p>
+      ) : up && startIso ? (
         <Card className="overflow-hidden border-primary/20 bg-primary/5 dark:border-primary/30 dark:bg-primary/10">
           <CardContent className="space-y-4 p-5">
             <p className="text-xs font-semibold uppercase tracking-wide text-primary">
@@ -277,15 +345,16 @@ export function PatientDashboardHome() {
             <p className="max-w-xs text-sm text-muted-foreground">
               Ready when you are. Book a session with one of our therapists.
             </p>
-            <Link
-              href="/book"
+            <button
+              type="button"
+              onClick={onBookSession}
               className={cn(
                 buttonVariants({ variant: "default" }),
                 "min-h-12 w-full max-w-sm",
               )}
             >
               Book a session
-            </Link>
+            </button>
           </CardContent>
         </Card>
       )}
@@ -322,13 +391,26 @@ export function PatientDashboardHome() {
 
       <section>
         <h2 className="mb-3 text-lg font-semibold">Recent sessions</h2>
-        {data.recentSessions.length === 0 ? (
+        {recentQ.isPending ? (
+          <div className="flex min-h-[120px] items-center justify-center rounded-xl border border-dashed p-6">
+            <LoadingWithCopy
+              messages={["Fetching your sessions...", "Almost there..."]}
+              size="md"
+            />
+          </div>
+        ) : recentQ.isError ? (
+          <p className="text-sm text-destructive">
+            {recentQ.error instanceof Error
+              ? recentQ.error.message
+              : "Could not load sessions."}
+          </p>
+        ) : (recentQ.data?.recentSessions.length ?? 0) === 0 ? (
           <p className="text-sm text-muted-foreground">
             Your session history will appear here.
           </p>
         ) : (
           <ul className="space-y-3">
-            {data.recentSessions.map((s) => {
+            {(recentQ.data?.recentSessions ?? []).map((s) => {
               const iso = bookingDateStartToIso(new Date(s.date), s.startTime);
               return (
                 <li
@@ -371,15 +453,16 @@ export function PatientDashboardHome() {
       <section>
         <h2 className="mb-3 text-lg font-semibold">Quick actions</h2>
         <div className="grid gap-2 sm:grid-cols-3">
-          <Link
-            href="/book"
+          <button
+            type="button"
+            onClick={onBookSession}
             className={cn(
               buttonVariants({ variant: "default" }),
               "min-h-12 w-full justify-center",
             )}
           >
             Book session
-          </Link>
+          </button>
           <Link
             href="/history"
             className={cn(

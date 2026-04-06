@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { addWatDays, watTodayDateString } from "@/lib/wat-datetime";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 type Props = {
   therapistId: string;
@@ -89,6 +90,7 @@ export function RebookInviteForm({
   const activeDay = daysData?.find((d) => d.ymd === selectedYmd) ?? null;
 
   const sendMut = useMutation({
+    onMutate: () => ({ toastId: toast.loading("Sending session invitation...") }),
     mutationFn: async () => {
       if (!selectedYmd || !selectedTime) {
         throw new Error("Pick a date and time");
@@ -110,11 +112,17 @@ export function RebookInviteForm({
         throw new Error(j.error ?? "Failed to send invitation");
       }
     },
-    onSuccess: () => {
+    onSuccess: (_d, _v, ctx) => {
+      if (ctx?.toastId) toast.dismiss(ctx.toastId);
+      toast.success("Invitation sent! ✅");
       setDoneMsg(
-        `Invitation sent to ${patientName}. They have 48 hours to confirm and pay. You will be notified when they respond.`,
+        `Invitation sent to ${patientName}. They have 7 days to confirm and pay. You will be notified when they respond.`,
       );
       onSent?.();
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.toastId) toast.dismiss(ctx.toastId);
+      toast.error("Failed to send. Try again.");
     },
   });
 
@@ -211,7 +219,7 @@ export function RebookInviteForm({
           </div>
 
           <div>
-            <Label htmlFor="rb-msg">Message to patient (optional)</Label>
+            <Label htmlFor="rb-msg">Message to client (optional)</Label>
             <textarea
               id="rb-msg"
               rows={3}

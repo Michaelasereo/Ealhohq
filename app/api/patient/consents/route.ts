@@ -25,7 +25,7 @@ export async function GET() {
 
     return NextResponse.json({ success: true, data: rows });
   } catch (e) {
-    console.error("patient consents GET:", e);
+    console.error("client consents GET:", e);
     return NextResponse.json(
       { error: "Failed to load consents" },
       { status: 500 },

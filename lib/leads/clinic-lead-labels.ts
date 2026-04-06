@@ -34,6 +34,6 @@ export const INTEREST_LABELS: Record<
 > = {
   staff_therapy: "Therapy sessions for my staff",
   notes_ai: "Ealho Notes AI for my clinic",
-  referral: "Patient referral partnership",
+  referral: "Client referral partnership",
   white_label: "White-label platform",
 };

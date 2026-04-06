@@ -5,7 +5,7 @@ import Link from "next/link";
 import {
   Calendar,
   DollarSign,
-  Mail,
+  Repeat2,
   TrendingUp,
   Users,
 } from "lucide-react";
@@ -16,7 +16,9 @@ import {
   Card,
   CardContent,
 } from "@/components/ui/card";
+import { LoadingWithCopy } from "@/components/shared/LoadingWithCopy";
 import { Skeleton } from "@/components/ui/skeleton";
+import { THERAPIST_DASHBOARD_MESSAGES } from "@/lib/loading-messages";
 import { AnonymousBadge } from "@/components/therapist/AnonymousBadge";
 import {
   canJoinSessionWindow,
@@ -91,13 +93,15 @@ async function fetchPendingRebooks(): Promise<PendingRebook[]> {
   return json.data;
 }
 
-async function fetchDashboard(): Promise<DashboardPayload> {
-  const res = await fetch("/api/therapist/dashboard", {
+async function fetchDashboardZone(
+  zone: "stats" | "today" | "upcoming",
+): Promise<DashboardPayload | Partial<DashboardPayload>> {
+  const res = await fetch(`/api/therapist/dashboard?zone=${zone}`, {
     credentials: "include",
   });
   const json = (await res.json()) as {
     success?: boolean;
-    data?: DashboardPayload;
+    data?: DashboardPayload | Partial<DashboardPayload>;
     error?: string;
   };
   if (!res.ok || !json.success || !json.data) {
@@ -219,9 +223,20 @@ function TodaySessionCard({ b }: { b: DashboardBooking }) {
 
 export default function TherapistDashboardPage() {
   const queryClient = useQueryClient();
-  const { data, isLoading, isError, error } = useQuery({
-    queryKey: ["therapist-dashboard"],
-    queryFn: fetchDashboard,
+  const statsQ = useQuery({
+    queryKey: ["therapist-dashboard", "stats"],
+    queryFn: () => fetchDashboardZone("stats") as Promise<Pick<DashboardPayload, "therapist" | "stats">>,
+  });
+  const todayQ = useQuery({
+    queryKey: ["therapist-dashboard", "today"],
+    queryFn: () => fetchDashboardZone("today") as Promise<Pick<DashboardPayload, "todaySessions">>,
+  });
+  const upcomingQ = useQuery({
+    queryKey: ["therapist-dashboard", "upcoming"],
+    queryFn: () =>
+      fetchDashboardZone("upcoming") as Promise<
+        Pick<DashboardPayload, "upcomingSessions">
+      >,
   });
 
   const {
@@ -231,7 +246,7 @@ export default function TherapistDashboardPage() {
   } = useQuery({
     queryKey: ["therapist-rebook-pending"],
     queryFn: fetchPendingRebooks,
-    enabled: !isLoading && Boolean(data),
+    enabled: Boolean(statsQ.data),
   });
 
   const cancelInvitation = useMutation({
@@ -252,58 +267,60 @@ export default function TherapistDashboardPage() {
     },
   });
 
-  if (isLoading) {
+  const firstLoad =
+    statsQ.isPending && statsQ.fetchStatus === "fetching" && !statsQ.data;
+
+  if (firstLoad) {
     return (
-      <main className="mx-auto min-h-screen w-full max-w-4xl space-y-6 p-4 pb-16">
-        <div className="flex justify-between gap-4">
-          <Skeleton className="h-24 w-2/3" />
-          <Skeleton className="size-10 shrink-0 rounded-full" />
-        </div>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-28 w-full" />
-          ))}
-        </div>
-        <Skeleton className="h-48 w-full" />
-        <Skeleton className="h-40 w-full" />
+      <main className="mx-auto flex min-h-[65vh] w-full max-w-4xl flex-col items-center justify-center p-4 pb-16">
+        <LoadingWithCopy
+          messages={[...THERAPIST_DASHBOARD_MESSAGES]}
+          size="lg"
+          showProgressBar
+          estimatedSeconds={4}
+        />
       </main>
     );
   }
 
-  if (isError || !data) {
+  if (statsQ.isError || !statsQ.data) {
     return (
       <main className="mx-auto max-w-3xl p-4">
         <p className="text-destructive">
-          {error instanceof Error ? error.message : "Could not load dashboard"}
+          {statsQ.error instanceof Error
+            ? statsQ.error.message
+            : "Could not load dashboard"}
         </p>
       </main>
     );
   }
 
-  const { stats, todaySessions, upcomingSessions } = data;
-  const first = data.therapist.therapistFirstName;
+  const { stats, therapist } = statsQ.data;
+  const todaySessions = todayQ.data?.todaySessions ?? [];
+  const upcomingSessions = upcomingQ.data?.upcomingSessions ?? [];
+  const first = therapist.therapistFirstName;
 
   return (
     <main className="mx-auto min-h-screen w-full max-w-4xl space-y-8 p-4 pb-20">
       <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">
-            {greetingWat()}, Dr. {first} 👋
+            {greetingWat()}, {first} 👋
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Here&apos;s your practice overview for today.
           </p>
         </div>
         <div className="relative size-10 shrink-0 overflow-hidden rounded-full border border-border bg-muted">
-          {data.therapist.profilePhoto ? (
+          {therapist.profilePhoto ? (
             <Image
-              src={data.therapist.profilePhoto}
+              src={therapist.profilePhoto}
               alt=""
               fill
               className="object-cover"
               sizes="40px"
               unoptimized={
-                data.therapist.profilePhoto.startsWith("http")
+                therapist.profilePhoto.startsWith("http")
               }
             />
           ) : (
@@ -315,21 +332,35 @@ export default function TherapistDashboardPage() {
       </header>
 
       <section className="space-y-3">
-        <div className="flex items-center gap-2">
-          <Mail className="size-5 text-primary" strokeWidth={1.5} />
-          <h2 className="text-lg font-semibold">Pending invitations</h2>
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <Repeat2 className="size-5 text-primary" strokeWidth={1.5} aria-hidden />
+            <h2 className="text-lg font-semibold">Rebooking invitations</h2>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Suggested follow-up times waiting for a client response — not the same
+            as secure chat. To message a client, open their profile from{" "}
+            <Link
+              href="/therapist/clients"
+              className="font-medium text-primary underline-offset-2 hover:underline"
+            >
+              Clients
+            </Link>{" "}
+            and use <span className="font-medium text-foreground">Message client</span>.
+          </p>
         </div>
         {pendingLoading ? (
           <Skeleton className="h-32 w-full" />
         ) : pendingError ? (
           <p className="text-sm text-destructive">
-            Could not load session invitations.
+            Could not load rebooking invitations.
           </p>
         ) : pendingRebooks.length === 0 ? (
           <Card>
             <CardContent className="py-6 text-center text-sm text-muted-foreground">
-              No pending session invitations. Send one from a client profile or
-              after a session.
+              No pending rebooking invitations. Send a suggested time from a
+              client&apos;s profile or after a session. To chat, open a client and
+              tap Message client.
             </CardContent>
           </Card>
         ) : (
@@ -348,7 +379,7 @@ export default function TherapistDashboardPage() {
                       {inv.expiresInHours === 1 ? "" : "s"}
                     </p>
                     <span className="inline-flex rounded-full bg-muted px-2 py-0.5 text-xs font-medium">
-                      Awaiting patient response
+                      Awaiting client response
                     </span>
                   </div>
                   <Button
@@ -368,16 +399,16 @@ export default function TherapistDashboardPage() {
       </section>
 
       {stats.pendingNotes > 0 ? (
-        <div className="flex flex-col gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-900 dark:bg-amber-950/30 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm font-medium text-amber-950 dark:text-amber-100">
+        <div className="flex flex-col gap-3 rounded-xl border border-[var(--figma-bg-pill)] bg-[var(--ealho-cream)] p-4 dark:border-border dark:bg-muted/30 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm font-medium text-[var(--figma-text)] dark:text-foreground">
             You have {stats.pendingNotes} session note
             {stats.pendingNotes === 1 ? "" : "s"} ready to review
           </p>
           <Link
             href="/therapist/sessions"
             className={cn(
-              buttonVariants({ variant: "default" }),
-              "min-h-12 w-full bg-amber-600 text-white hover:bg-amber-700 sm:w-auto",
+              buttonVariants({ variant: "default", size: "lg" }),
+              "min-h-12 w-full justify-center sm:w-auto",
             )}
           >
             Review notes
@@ -386,7 +417,7 @@ export default function TherapistDashboardPage() {
       ) : null}
 
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Card className="border-blue-100 bg-blue-50/80 dark:border-blue-900 dark:bg-blue-950/30">
+        <Card className="border-border bg-white dark:border-border dark:bg-card">
           <CardContent className="flex items-start gap-3 p-4">
             <div className="rounded-lg bg-blue-100 p-2 dark:bg-blue-900/50">
               <Calendar className="size-5 text-blue-700 dark:text-blue-200" strokeWidth={1.5} />
@@ -402,7 +433,7 @@ export default function TherapistDashboardPage() {
             </div>
           </CardContent>
         </Card>
-        <Card className="border-emerald-100 bg-emerald-50/80 dark:border-emerald-900 dark:bg-emerald-950/30">
+        <Card className="border-border bg-white dark:border-border dark:bg-card">
           <CardContent className="flex items-start gap-3 p-4">
             <div className="rounded-lg bg-emerald-100 p-2 dark:bg-emerald-900/50">
               <TrendingUp className="size-5 text-emerald-700 dark:text-emerald-200" strokeWidth={1.5} />
@@ -418,7 +449,7 @@ export default function TherapistDashboardPage() {
             </div>
           </CardContent>
         </Card>
-        <Card className="border-violet-100 bg-violet-50/80 dark:border-violet-900 dark:bg-violet-950/30">
+        <Card className="border-border bg-white dark:border-border dark:bg-card">
           <CardContent className="flex items-start gap-3 p-4">
             <div className="rounded-lg bg-violet-100 p-2 dark:bg-violet-900/50">
               <Users className="size-5 text-violet-700 dark:text-violet-200" strokeWidth={1.5} />
@@ -434,7 +465,7 @@ export default function TherapistDashboardPage() {
             </div>
           </CardContent>
         </Card>
-        <Card className="border-amber-100 bg-amber-50/80 dark:border-amber-900 dark:bg-amber-950/30">
+        <Card className="border-border bg-white dark:border-border dark:bg-card">
           <CardContent className="flex items-start gap-3 p-4">
             <div className="rounded-lg bg-amber-100 p-2 dark:bg-amber-900/50">
               <DollarSign className="size-5 text-amber-800 dark:text-amber-200" strokeWidth={1.5} />
@@ -456,10 +487,21 @@ export default function TherapistDashboardPage() {
         <div className="flex items-center gap-2">
           <h2 className="text-lg font-semibold">Today&apos;s sessions</h2>
           <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium tabular-nums">
-            {todaySessions.length}
+            {todayQ.isPending ? "—" : todaySessions.length}
           </span>
         </div>
-        {todaySessions.length === 0 ? (
+        {todayQ.isPending ? (
+          <div className="space-y-3">
+            <Skeleton className="h-36 w-full rounded-xl" />
+            <Skeleton className="h-36 w-full rounded-xl" />
+          </div>
+        ) : todayQ.isError ? (
+          <p className="text-sm text-destructive">
+            {todayQ.error instanceof Error
+              ? todayQ.error.message
+              : "Could not load today&apos;s sessions."}
+          </p>
+        ) : todaySessions.length === 0 ? (
           <Card>
             <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
               <Calendar className="size-12 text-gray-300" strokeWidth={1.5} />
@@ -491,17 +533,28 @@ export default function TherapistDashboardPage() {
         <div className="flex items-center gap-2">
           <h2 className="text-lg font-semibold">Upcoming</h2>
           <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium tabular-nums">
-            {upcomingSessions.length}
+            {upcomingQ.isPending ? "—" : upcomingSessions.length}
           </span>
         </div>
-        {upcomingSessions.length === 0 ? (
+        {upcomingQ.isPending ? (
+          <div className="space-y-2">
+            <Skeleton className="h-16 w-full rounded-xl" />
+            <Skeleton className="h-16 w-full rounded-xl" />
+          </div>
+        ) : upcomingQ.isError ? (
+          <p className="text-sm text-destructive">
+            {upcomingQ.error instanceof Error
+              ? upcomingQ.error.message
+              : "Could not load upcoming sessions."}
+          </p>
+        ) : upcomingSessions.length === 0 ? (
           <Card>
             <CardContent className="space-y-3 py-8 text-center">
               <p className="text-sm text-muted-foreground">
                 No upcoming sessions scheduled.
               </p>
               <p className="text-sm text-muted-foreground">
-                Manage your availability to let patients book.
+                Manage your availability to let clients book.
               </p>
               <Link
                 href="/therapist/availability"

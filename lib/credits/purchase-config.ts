@@ -4,10 +4,10 @@ export const CREDIT_PACKAGE_PAYSTACK: Record<
   CreditPackageKey,
   { credits: number; amountKobo: number }
 > = {
-  bronze: { credits: 2, amountKobo: 2_800_000 },
-  silver: { credits: 4, amountKobo: 5_400_000 },
-  gold: { credits: 8, amountKobo: 10_000_000 },
-  platinum: { credits: 12, amountKobo: 14_400_000 },
+  bronze: { credits: 2, amountKobo: 3_800_000 },
+  silver: { credits: 4, amountKobo: 7_200_000 },
+  gold: { credits: 8, amountKobo: 13_600_000 },
+  platinum: { credits: 12, amountKobo: 19_200_000 },
 };
 
 export function tierFromBalance(balance: number): CreditPackageKey {

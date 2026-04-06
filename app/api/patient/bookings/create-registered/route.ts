@@ -155,7 +155,7 @@ export async function POST(req: Request) {
       data: { bookingId: booking.id, paidWithCredits: false },
     });
   } catch (e) {
-    console.error("patient/bookings/create-registered POST:", e);
+    console.error("client bookings/create-registered POST:", e);
     return NextResponse.json(
       { success: false, error: "Failed to create booking" },
       { status: 500 },

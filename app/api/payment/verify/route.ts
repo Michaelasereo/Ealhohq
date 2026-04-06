@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 
 import { formatAmountToKobo } from "@/lib/paystack/client";
 import { finalizeTherapyPayment } from "@/lib/payment/finalize-therapy-payment";
 import { sendTherapyBookingPaidNotifications } from "@/lib/payment/send-therapy-booking-paid-notifications";
 import { getPaystackSecretKey } from "@/lib/paystack/server-keys";
 import { prisma } from "@/lib/prisma/client";
+import { chargeSessionRateNgn } from "@/lib/referral/pricing";
+import { therapistPublicLabel } from "@/lib/therapist-display-name";
 
 function parseMetadata(raw: unknown): Record<string, string> {
   if (!raw) return {};
@@ -112,9 +115,12 @@ export async function POST(req: Request) {
       );
     }
 
-    const expectedKobo = formatAmountToKobo(
-      Number(bookingRow.therapist.sessionRate),
-    );
+    const rate = chargeSessionRateNgn(bookingRow);
+    const disc =
+      bookingRow.discountAmount != null
+        ? Number(bookingRow.discountAmount)
+        : 0;
+    const expectedKobo = formatAmountToKobo(Math.max(0, rate - disc));
     if (
       typeof payload.data?.amount === "number" &&
       payload.data.amount !== expectedKobo
@@ -136,6 +142,41 @@ export async function POST(req: Request) {
     const { booking, sessionId, shouldSendConfirmationEmail } =
       await finalizeTherapyPayment(bookingId, ref);
 
+    if (
+      bookingRow.discountCode &&
+      meta.discount_code_id &&
+      bookingRow.discountAmount != null
+    ) {
+      const existing = await prisma.discountCodeUse.findFirst({
+        where: { bookingId },
+      });
+      if (!existing) {
+        const code = await prisma.discountCode.findUnique({
+          where: { id: meta.discount_code_id },
+        });
+        if (code && code.code === bookingRow.discountCode) {
+          await prisma.$transaction(
+            async (tx) => {
+              await tx.discountCode.update({
+                where: { id: code.id },
+                data: { usedCount: { increment: 1 } },
+              });
+              await tx.discountCodeUse.create({
+                data: {
+                  codeId: code.id,
+                  bookingId,
+                  savedAmount: new Prisma.Decimal(
+                    String(Number(bookingRow.discountAmount)),
+                  ),
+                },
+              });
+            },
+            { timeout: 10_000 },
+          );
+        }
+      }
+    }
+
     if (shouldSendConfirmationEmail) {
       await sendTherapyBookingPaidNotifications(booking);
     }
@@ -150,7 +191,7 @@ export async function POST(req: Request) {
           endTime: booking.endTime,
           sessionDuration: booking.therapist.sessionDuration,
           sessionRateFormatted: `₦${Math.round(Number(booking.therapist.sessionRate)).toLocaleString("en-NG")}`,
-          therapistName: booking.therapist.profile.fullName,
+          therapistName: therapistPublicLabel(booking.therapist.profile.fullName),
           therapistPhoto:
             booking.therapist.profilePhoto ?? "/Ealho-logo.png",
           sessionType: booking.sessionType,

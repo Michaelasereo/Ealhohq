@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 const accent = "#292612";
 
 function ThreePanelMockup() {
-  const patients = [
+  const mockSessionRows = [
     { name: "Adaeze O.", type: "Intake", active: true },
     { name: "Emeka T.", type: "Follow-up", active: false },
     { name: "Ngozi A.", type: "Follow-up", active: false },
@@ -48,12 +48,12 @@ function ThreePanelMockup() {
           </p>
           <p className="mb-3 text-sm font-semibold text-gray-800">Today (5)</p>
           <div className="space-y-1.5">
-            {patients.map((patient, i) => (
+            {mockSessionRows.map((row, i) => (
               <div
                 key={i}
                 className={cn(
                   "flex cursor-default items-center justify-between rounded-lg px-2.5 py-2 transition-colors",
-                  patient.active
+                  row.active
                     ? "border border-[#292612]/15 bg-[#292612]/8"
                     : "hover:bg-gray-50",
                 )}
@@ -62,22 +62,22 @@ function ThreePanelMockup() {
                   <div
                     className={cn(
                       "h-1.5 w-1.5 shrink-0 rounded-full",
-                      patient.active ? "bg-[#292612]" : "bg-gray-200",
+                      row.active ? "bg-[#292612]" : "bg-gray-200",
                     )}
                   />
                   <div className="min-w-0">
                     <p
                       className={cn(
                         "truncate text-xs font-medium",
-                        patient.active ? "text-[#292612]" : "text-gray-700",
+                        row.active ? "text-[#292612]" : "text-gray-700",
                       )}
                     >
-                      {patient.name}
+                      {row.name}
                     </p>
-                    <p className="text-[10px] text-gray-400">{patient.type}</p>
+                    <p className="text-[10px] text-gray-400">{row.type}</p>
                   </div>
                 </div>
-                {patient.active ? (
+                {row.active ? (
                   <ChevronRight
                     size={12}
                     strokeWidth={1.5}

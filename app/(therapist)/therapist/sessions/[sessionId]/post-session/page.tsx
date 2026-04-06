@@ -1,10 +1,13 @@
 "use client";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { motion } from "framer-motion";
+import { Check } from "lucide-react";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useLayoutEffect, useState } from "react";
 
+import { NoteGenerationLoader } from "@/components/notes/NoteGenerationLoader";
 import { SoapNoteDisplay, type NoteType } from "@/components/notes/SoapNoteDisplay";
 import { SoapNoteEditor } from "@/components/notes/SoapNoteEditor";
 import { AnonymousBadge } from "@/components/therapist/AnonymousBadge";
@@ -28,7 +31,12 @@ type NoteApiData =
 type SessionCtx = {
   therapistId: string;
   patient: { id: string; fullName: string };
-  booking: { id: string; isAnonymous: boolean; clientId: string };
+  booking: {
+    id: string;
+    isAnonymous: boolean;
+    clientId: string;
+    professionalType: string | null;
+  };
 };
 
 async function fetchSessionCtx(sessionId: string): Promise<SessionCtx> {
@@ -69,6 +77,7 @@ function PostSessionInner() {
   const qc = useQueryClient();
   const [timedOut, setTimedOut] = useState(false);
   const [editing, setEditing] = useState(manual);
+  const [notesReadySplash, setNotesReadySplash] = useState(false);
 
   const { data: sessionCtx } = useQuery({
     queryKey: ["therapist-session-ctx", sessionId],
@@ -93,9 +102,29 @@ function PostSessionInner() {
   const waitPhase =
     data === undefined ? "loading" : ready ? "ready" : "pending";
 
+  const noteContent =
+    data && "ready" in data && data.ready && data.noteContent &&
+    typeof data.noteContent === "object"
+      ? data.noteContent
+      : null;
+
   useEffect(() => {
     setTimedOut(false);
   }, [sessionId]);
+
+  useLayoutEffect(() => {
+    if (!ready || manual || !noteContent) {
+      setNotesReadySplash(false);
+      return;
+    }
+    setNotesReadySplash(true);
+  }, [ready, manual, noteContent, sessionId]);
+
+  useEffect(() => {
+    if (!notesReadySplash) return;
+    const t = window.setTimeout(() => setNotesReadySplash(false), 1000);
+    return () => window.clearTimeout(t);
+  }, [notesReadySplash]);
 
   useEffect(() => {
     if (manual || waitPhase !== "pending") {
@@ -114,12 +143,18 @@ function PostSessionInner() {
     );
   }
 
-  if (isLoading) {
+  if (!manual && isLoading) {
+    return (
+      <main className="mx-auto min-h-screen w-full max-w-2xl p-4">
+        <NoteGenerationLoader />
+      </main>
+    );
+  }
+
+  if (manual && isLoading) {
     return (
       <main className="mx-auto min-h-screen w-full max-w-2xl space-y-4 p-4">
-        <h1 className="text-xl font-semibold">
-          {manual ? "Session notes" : "Loading notes…"}
-        </h1>
+        <h1 className="text-xl font-semibold">Session notes</h1>
         <div className="space-y-2">
           <Skeleton className="h-6 w-1/2 animate-pulse" />
           <Skeleton className="h-24 w-full animate-pulse" />
@@ -152,10 +187,6 @@ function PostSessionInner() {
 
   const stillGenerating = !data.ready && !manual;
   const noteType = (data.ready ? data.noteType : "soap") as NoteType;
-  const noteContent =
-    data.ready && data.noteContent && typeof data.noteContent === "object"
-      ? data.noteContent
-      : null;
 
   if (manual && !data.ready) {
     const empty = emptySoapProgressNote();
@@ -191,8 +222,10 @@ function PostSessionInner() {
       <main className="mx-auto min-h-screen max-w-2xl space-y-4 p-4">
         <h1 className="text-xl font-semibold">Notes delayed</h1>
         <p className="text-sm text-muted-foreground">
-          Notes are taking longer than expected. You can enter notes manually
-          or try again shortly.
+          Note generation is taking longer than usual.
+        </p>
+        <p className="text-sm text-muted-foreground">
+          We will notify you when your notes are ready.
         </p>
         <div className="flex flex-col gap-3 sm:flex-row">
           <Link
@@ -228,24 +261,43 @@ function PostSessionInner() {
 
   if (stillGenerating) {
     return (
-      <main className="mx-auto flex min-h-screen w-full max-w-2xl flex-col items-center justify-center gap-4 p-4 text-center">
-        <div
-          className="size-12 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-primary"
+      <main className="mx-auto min-h-screen w-full max-w-2xl p-4">
+        <NoteGenerationLoader />
+        <div className="flex justify-center pb-8">
+          <Link
+            href={`/therapist/sessions/${sessionId}/post-session?manual=true`}
+            className={cn(
+              buttonVariants({ variant: "link" }),
+              "min-h-12",
+            )}
+          >
+            Enter notes manually instead
+          </Link>
+        </div>
+      </main>
+    );
+  }
+
+  if (ready && notesReadySplash && noteContent) {
+    return (
+      <main className="mx-auto flex min-h-[min(100dvh,640px)] w-full max-w-2xl flex-col items-center justify-center gap-6 p-4 text-center">
+        <motion.div
+          initial={{ scale: 0.6, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ type: "spring", stiffness: 320, damping: 22 }}
+          className="flex size-20 items-center justify-center rounded-full bg-primary/15 text-primary"
           aria-hidden
-        />
-        <h1 className="text-xl font-semibold">Generating your session notes…</h1>
-        <p className="text-sm text-muted-foreground">
-          This usually takes under a minute. This page refreshes automatically.
-        </p>
-        <Link
-          href={`/therapist/sessions/${sessionId}/post-session?manual=true`}
-          className={cn(
-            buttonVariants({ variant: "link" }),
-            "min-h-12",
-          )}
         >
-          Enter notes manually instead
-        </Link>
+          <Check className="size-10" strokeWidth={2.5} />
+        </motion.div>
+        <motion.h1
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.05 }}
+          className="text-2xl font-semibold text-foreground"
+        >
+          Your notes are ready
+        </motion.h1>
       </main>
     );
   }
@@ -277,6 +329,11 @@ function PostSessionInner() {
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-xl font-semibold">Session notes</h1>
             {sessionCtx?.booking.isAnonymous ? <AnonymousBadge /> : null}
+            {sessionCtx?.booking.professionalType ? (
+              <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-500">
+                {sessionCtx.booking.professionalType}
+              </span>
+            ) : null}
           </div>
           {sessionCtx?.booking.isAnonymous ? (
             <p className="mt-1 text-xs text-muted-foreground">
@@ -336,7 +393,7 @@ function PostSessionInner() {
             therapistId={sessionCtx.therapistId}
             patientId={sessionCtx.patient.id}
             patientName={sessionCtx.patient.fullName}
-            title={`Schedule ${sessionCtx.patient.fullName.split(" ")[0] ?? "patient"}'s next session`}
+            title={`Schedule ${sessionCtx.patient.fullName.split(" ")[0] ?? "client"}'s next session`}
           />
         </section>
       ) : null}

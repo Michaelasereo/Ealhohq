@@ -61,7 +61,7 @@ export async function GET() {
       },
     });
   } catch (e) {
-    console.error("patient/profile/me GET:", e);
+    console.error("client profile/me GET:", e);
     return NextResponse.json(
       { error: "Failed to fetch profile" },
       { status: 500 },
@@ -165,7 +165,7 @@ export async function PATCH(req: Request) {
 
     return NextResponse.json({ success: true });
   } catch (e) {
-    console.error("patient/profile/me PATCH:", e);
+    console.error("client profile/me PATCH:", e);
     return NextResponse.json(
       { error: "Failed to update profile" },
       { status: 500 },

@@ -24,6 +24,7 @@ type BookingRow = {
   guestName: string | null;
   isAnonymous: boolean;
   clientAlias: string | null;
+  professionalType: string | null;
   startTime: string;
   endTime: string;
   date: string;
@@ -74,20 +75,25 @@ function SessionCard({
     b.status === "confirmed" &&
     canJoinSessionWindow(bookingDate, b.startTime, b.endTime);
   const joinHref = `/session/join?bookingId=${b.id}`;
-  const minsUntil =
-    (new Date(iso).getTime() - Date.now()) / 60_000;
-  const canCancelList = minsUntil > 24 * 60;
 
   const cancelMut = useMutation({
     mutationFn: async () => {
-      const r = await fetch(`/api/therapist/bookings/${b.id}/cancel`, {
-        method: "PATCH",
+      const r = await fetch("/api/sessions/cancel", {
+        method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ leadMinutes: 1440 }),
+        body: JSON.stringify({
+          bookingId: b.id,
+          cancelledBy: "therapist",
+        }),
       });
-      const j = (await r.json().catch(() => ({}))) as { error?: string };
-      if (!r.ok) throw new Error(j.error ?? "Cancel failed");
+      const j = (await r.json().catch(() => ({}))) as {
+        success?: boolean;
+        error?: string;
+      };
+      if (!r.ok || !j.success) {
+        throw new Error(j.error ?? "Cancel failed");
+      }
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["therapist-sessions"] });
@@ -115,6 +121,11 @@ function SessionCard({
                 })}
               </p>
               {b.isAnonymous ? <AnonymousBadge /> : null}
+              {b.professionalType ? (
+                <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-500">
+                  {b.professionalType}
+                </span>
+              ) : null}
             </div>
             <p className="text-sm text-muted-foreground">
               {formatWAT(iso)} WAT
@@ -142,9 +153,10 @@ function SessionCard({
           </div>
         </div>
 
-        {mode === "upcoming" && b.status === "confirmed" ? (
+        {mode === "upcoming" &&
+        (b.status === "confirmed" || b.status === "pending") ? (
           <div className="flex flex-wrap gap-2">
-            {joinOk ? (
+            {b.status === "confirmed" && joinOk ? (
               <Link
                 href={joinHref}
                 className={cn(
@@ -155,37 +167,35 @@ function SessionCard({
                 Join
               </Link>
             ) : null}
-            {canCancelList ? (
-              <Button
-                type="button"
-                variant="outline"
-                className="min-h-12"
-                disabled={cancelMut.isPending}
-                onClick={() => {
-                  if (
-                    typeof window !== "undefined" &&
-                    window.confirm(
-                      "Cancel this session? The patient will need to book again.",
-                    )
-                  ) {
-                    cancelMut.mutate();
-                  }
-                }}
-              >
-                {cancelMut.isPending ? "Cancelling…" : "Cancel"}
-              </Button>
-            ) : null}
+            <Button
+              type="button"
+              variant="outline"
+              className="min-h-12"
+              disabled={cancelMut.isPending}
+              onClick={() => {
+                if (
+                  typeof window !== "undefined" &&
+                  window.confirm(
+                    "Cancel this session? The client will receive a full refund or credit back, plus one complimentary credit, per our policy.",
+                  )
+                ) {
+                  cancelMut.mutate();
+                }
+              }}
+            >
+              {cancelMut.isPending ? "Cancelling…" : "Cancel"}
+            </Button>
           </div>
         ) : null}
 
         {mode === "completed" && b.session ? (
           <div className="flex flex-wrap gap-2">
             {notesReady ? (
-              <span className="rounded-full bg-emerald-100 px-2 py-1 text-xs font-medium text-emerald-900">
+              <span className="inline-flex items-center rounded-full border border-[var(--figma-bg-pill)] bg-[var(--ealho-cream)] px-3 py-1.5 text-xs font-medium text-[var(--figma-text)] dark:border-border dark:bg-muted/40 dark:text-foreground">
                 Notes ready
               </span>
             ) : (
-              <span className="rounded-full bg-amber-100 px-2 py-1 text-xs font-medium text-amber-900">
+              <span className="inline-flex items-center rounded-full bg-amber-100 px-3 py-1.5 text-xs font-medium text-amber-900 dark:bg-amber-950/40 dark:text-amber-100">
                 Notes pending
               </span>
             )}
@@ -268,7 +278,7 @@ export default function TherapistSessionsPage() {
                 <Calendar className="size-12 text-gray-300" strokeWidth={1.5} />
                 <p className="font-semibold">No upcoming sessions</p>
                 <p className="max-w-sm text-sm text-muted-foreground">
-                  Sessions will appear here once patients book.
+                  Sessions will appear here once clients book.
                 </p>
                 <Button
                   type="button"

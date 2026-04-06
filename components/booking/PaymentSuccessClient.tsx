@@ -24,6 +24,7 @@ import {
 import { bookingDateToWatYmd } from "@/lib/wat-datetime";
 import { cn } from "@/lib/utils";
 import { useBookingStore } from "@/stores/bookingStore";
+import { toast } from "sonner";
 
 type BookingDetail = {
   id: string;
@@ -122,6 +123,7 @@ export function PaymentSuccessClient({
           setPhase("success");
           resetDraft();
           confetti({ particleCount: 120, spread: 90, origin: { y: 0.4 } });
+          toast.success("Session booked! ✅");
           return;
         }
 
@@ -155,6 +157,7 @@ export function PaymentSuccessClient({
         setPhase("success");
         resetDraft();
         confetti({ particleCount: 120, spread: 90, origin: { y: 0.4 } });
+        toast.success("Session booked! ✅");
       } catch {
         if (!cancelled) {
           setMessage("Could not load booking");

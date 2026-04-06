@@ -42,7 +42,7 @@ BEGIN
     ARRAY['MSc Clinical Psychology']::text[],
     NULL,
     'pending',
-    15000.00,
+    20000.00,
     50,
     NOW(),
     NOW()

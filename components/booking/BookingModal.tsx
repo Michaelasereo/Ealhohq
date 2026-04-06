@@ -6,12 +6,14 @@ import { X } from "lucide-react";
 import { BookingStep1 } from "@/components/booking/BookingStep1";
 import { BookingStep2 } from "@/components/booking/BookingStep2";
 import { BookingStep3 } from "@/components/booking/BookingStep3";
+import { CaptureReferralFromUrl } from "@/components/referral/CaptureReferralFromUrl";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 
 export interface BookingData {
   reason: string;
   reasonCategory: string;
+  professionalType: string;
   fullName: string;
   email: string;
   phone: string;
@@ -31,6 +33,7 @@ export interface BookingData {
 export const EMPTY_BOOKING: BookingData = {
   reason: "",
   reasonCategory: "",
+  professionalType: "",
   fullName: "",
   email: "",
   phone: "",
@@ -74,6 +77,7 @@ export function BookingModal({ open, onClose }: Props) {
         showCloseButton={false}
         className="w-[min(100vw-2rem,32rem)] max-h-[min(92vh,800px)] overflow-hidden border-0 p-0 shadow-2xl sm:max-w-lg sm:rounded-2xl max-sm:fixed max-sm:inset-x-0 max-sm:bottom-0 max-sm:top-auto max-sm:max-h-[92vh] max-sm:translate-x-0 max-sm:translate-y-0 max-sm:rounded-b-none max-sm:rounded-t-2xl"
       >
+        <CaptureReferralFromUrl />
         <div className="border-b border-gray-100 px-6 pb-4 pt-5">
           <div className="mb-4 flex items-center justify-between">
             <div>

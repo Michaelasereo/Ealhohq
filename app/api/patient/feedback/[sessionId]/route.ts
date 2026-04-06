@@ -4,6 +4,7 @@ import { z } from "zod";
 import { getPatientByProfileId } from "@/lib/queries/patient";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma/client";
+import { therapistPublicLabel } from "@/lib/therapist-display-name";
 
 type Ctx = { params: Promise<{ sessionId: string }> };
 
@@ -51,13 +52,13 @@ export async function GET(_req: Request, ctx: Ctx) {
       data: {
         submitted: session.feedbacks.length > 0,
         needsProfile: false as const,
-        therapistName: session.therapist.profile.fullName,
+        therapistName: therapistPublicLabel(session.therapist.profile.fullName),
         therapistPhoto:
           session.therapist.profilePhoto ?? "/Ealho-logo.png",
       },
     });
   } catch (e) {
-    console.error("patient feedback GET:", e);
+    console.error("client feedback GET:", e);
     return NextResponse.json(
       { error: "Failed to check feedback" },
       { status: 500 },
@@ -134,7 +135,7 @@ export async function POST(req: Request, ctx: Ctx) {
 
     return NextResponse.json({ success: true });
   } catch (e) {
-    console.error("patient feedback POST:", e);
+    console.error("client feedback POST:", e);
     return NextResponse.json(
       { error: "Failed to save feedback" },
       { status: 500 },

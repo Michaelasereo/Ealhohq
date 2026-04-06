@@ -2,12 +2,14 @@ import { randomUUID } from "crypto";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { resolveAppRole } from "@/lib/auth/resolve-app-role";
 import { encryptMessage, decryptMessage } from "@/lib/chat/encryption";
 import { notifyNewChatMessage } from "@/lib/chat/message-notify";
 import { getTherapistByProfileId } from "@/lib/queries/patient";
 import { ensureRegisteredPatientForUser } from "@/lib/queries/patient";
 import { prisma } from "@/lib/prisma/client";
 import { createClient } from "@/lib/supabase/server";
+import { therapistPublicLabel } from "@/lib/therapist-display-name";
 
 export const runtime = "nodejs";
 
@@ -64,7 +66,7 @@ export async function GET(req: Request, ctx: Ctx) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const role = user.app_metadata?.role as string | undefined;
+    const role = await resolveAppRole(user.id);
     if (role !== "patient" && role !== "therapist") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
@@ -216,7 +218,7 @@ export async function POST(req: Request, ctx: Ctx) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const role = user.app_metadata?.role as string | undefined;
+    const role = await resolveAppRole(user.id);
     if (role !== "patient" && role !== "therapist") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
@@ -304,7 +306,9 @@ export async function POST(req: Request, ctx: Ctx) {
       await notifyNewChatMessage({
         toTherapist: false,
         recipientPhone: thread.patient.phone,
-        otherPartyFullName: thread.therapist.profile.fullName,
+        otherPartyFullName: therapistPublicLabel(
+          thread.therapist.profile.fullName,
+        ),
         threadId,
       });
     }

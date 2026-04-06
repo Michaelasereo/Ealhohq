@@ -6,6 +6,7 @@ import type {
   TherapyTherapist,
 } from "@prisma/client";
 
+import { therapistPublicLabel } from "@/lib/therapist-display-name";
 import { bookingDateStartToIso } from "@/lib/wat-datetime";
 
 export type PatientSessionView = {
@@ -47,7 +48,7 @@ export function mapSessionForPatient(
     bookingId: s.bookingId,
     therapist: {
       id: s.therapist.id,
-      name: s.therapist.profile.fullName,
+      name: therapistPublicLabel(s.therapist.profile.fullName),
       photo: s.therapist.profilePhoto ?? "/Ealho-logo.png",
     },
     dateIso: startIso,

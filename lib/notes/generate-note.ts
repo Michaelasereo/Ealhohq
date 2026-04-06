@@ -78,6 +78,12 @@ export async function generateNoteDirectly(
 IMPORTANT: This is an anonymous session. Do not reference any personal identifiers. Use ONLY the client_id in all references. Do not include alias or any name whatsoever.`
     : "";
 
+  const professionalBlock = session.booking.professionalType?.trim()
+    ? `
+
+Client professional background: ${session.booking.professionalType.trim()}`
+    : "";
+
   try {
     const response = await client.messages.create({
       model: "claude-sonnet-4-20250514",
@@ -90,7 +96,7 @@ IMPORTANT: This is an anonymous session. Do not reference any personal identifie
 Date: ${session.booking.date.toISOString().split("T")[0]}
 Client ID: ${clientIdLabel}
 Format: telehealth
-${anonymousBlock}
+${anonymousBlock}${professionalBlock}
 
 Transcript:
 ${transcript}

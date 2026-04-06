@@ -28,7 +28,7 @@ export function InviteTherapistModal({
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
-  const [sessionRate, setSessionRate] = useState(15000);
+  const [sessionRate, setSessionRate] = useState(20000);
   const [sessionDuration, setSessionDuration] = useState<50 | 60 | 90>(50);
   const [bio, setBio] = useState("");
   const [specs, setSpecs] = useState<string[]>([]);

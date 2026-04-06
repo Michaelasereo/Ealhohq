@@ -5,6 +5,7 @@ import { enrichSlotsForQuickRebook } from "@/lib/booking/quick-rebook-display";
 import { getPatientByProfileId } from "@/lib/queries/patient";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma/client";
+import { therapistPublicLabel } from "@/lib/therapist-display-name";
 import { addWatDays, watTodayDateString } from "@/lib/wat-datetime";
 
 export async function POST(req: Request) {
@@ -32,7 +33,7 @@ export async function POST(req: Request) {
     const patient = await getPatientByProfileId(user.id);
     if (!patient) {
       return NextResponse.json(
-        { success: false, error: "Patient profile not found" },
+        { success: false, error: "Client profile not found" },
         { status: 403 },
       );
     }
@@ -77,7 +78,7 @@ export async function POST(req: Request) {
       data: {
         therapist: {
           id: therapist.id,
-          name: therapist.profile.fullName,
+          name: therapistPublicLabel(therapist.profile.fullName),
           photo: therapist.profilePhoto ?? "/Ealho-logo.png",
           sessionRate: Math.round(Number(therapist.sessionRate)),
           sessionDuration: therapist.sessionDuration,
@@ -88,7 +89,7 @@ export async function POST(req: Request) {
       },
     });
   } catch (e) {
-    console.error("patient/quick-rebook POST:", e);
+    console.error("client quick-rebook POST:", e);
     return NextResponse.json(
       { success: false, error: "Failed to load quick rebook" },
       { status: 500 },

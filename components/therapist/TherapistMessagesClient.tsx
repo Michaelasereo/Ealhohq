@@ -80,7 +80,7 @@ function TherapistMessagesInner() {
             currentUserId={userId}
             onBack={() => setActiveId(null)}
             canSend={active.status !== "pending_deletion"}
-            readOnlyHint="This patient scheduled deletion of this chat. Messaging is paused until they cancel from their profile."
+            readOnlyHint="This client scheduled deletion of this chat. Messaging is paused until they cancel from their profile."
           />
         ) : (
           <div className="hidden h-full items-center justify-center p-6 text-sm text-muted-foreground md:flex">

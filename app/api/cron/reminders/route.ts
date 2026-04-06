@@ -12,6 +12,7 @@ import { formatLongDateWAT, formatTimeAmPmWAT } from "@/lib/rebooking/format-inv
 import { runChatSlaRemindersAndEscalations } from "@/lib/chat/admin-sla-cron";
 import { prisma } from "@/lib/prisma/client";
 import { getDisplayName } from "@/lib/utils/patient-display";
+import { therapistPublicLabel } from "@/lib/therapist-display-name";
 import { bookingDateStartToIso, formatWAT } from "@/lib/wat-datetime";
 
 export const runtime = "nodejs";
@@ -68,7 +69,7 @@ export async function GET(req: Request) {
         b.guestPhone ?? b.patient?.phone ?? null,
       );
 
-      const therapistName = b.therapist.profile.fullName;
+      const therapistName = therapistPublicLabel(b.therapist.profile.fullName);
       const timeWat = formatWAT(bookingDateStartToIso(b.date, b.startTime));
       const dateLine = new Intl.DateTimeFormat("en-NG", {
         dateStyle: "full",
@@ -84,7 +85,7 @@ Reminder: You have a therapy session tomorrow.
 
 🗓 Date: ${dateLine}
 🕐 Time: ${timeWat} WAT
-👨‍⚕️ Therapist: ${therapistName}
+${therapistName}
 
 Join here: ${link}
 
@@ -110,7 +111,7 @@ Reply HELP if you need to reschedule.`;
       if (!b.reminder1hSent && inWindow(delta, 1 * H)) {
         const wa = `Hi ${name}! Your session starts in 1 hour.
 
-👨‍⚕️ Therapist: ${therapistName}
+${therapistName}
 🕐 Time: ${timeWat} WAT
 
 Join here: ${link}

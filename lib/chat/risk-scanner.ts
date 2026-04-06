@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 
 import { firstName, normalizeNgDigits } from "@/lib/rebooking/phone";
 import { prisma } from "@/lib/prisma/client";
+import { therapistPublicLabel } from "@/lib/therapist-display-name";
 import { sendWhatsAppText } from "@/lib/reminders/send-whatsapp";
 
 function parseRiskJson(text: string): {
@@ -105,14 +106,14 @@ async function notifyHighRisk(messageId: string): Promise<void> {
   if (!msg?.thread) return;
 
   const pf = firstName(msg.thread.patient.fullName);
-  const dr = msg.thread.therapist.profile.fullName;
+  const tLabel = therapistPublicLabel(msg.thread.therapist.profile.fullName);
 
   await sendWhatsAppText({
     toE164Digits: to,
     body: `HIGH RISK FLAG
 
 A message has been flagged as high risk.
-Patient: ${pf} in thread with ${dr}
+Client: ${pf} in thread with ${tLabel}
 Time: ${msg.createdAt.toISOString()}
 
 Please review immediately in admin dashboard:

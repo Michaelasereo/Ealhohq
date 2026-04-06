@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma/client";
+import { therapistPublicLabel } from "@/lib/therapist-display-name";
 
 type Ctx = { params: Promise<{ sessionId: string }> };
 
@@ -22,7 +23,7 @@ export async function GET(_req: Request, ctx: Ctx) {
     return NextResponse.json({
       success: true,
       data: {
-        therapistName: session.therapist.profile.fullName,
+        therapistName: therapistPublicLabel(session.therapist.profile.fullName),
         therapistPhoto:
           session.therapist.profilePhoto ?? "/Ealho-logo.png",
       },

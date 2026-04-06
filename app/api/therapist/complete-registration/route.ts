@@ -78,7 +78,7 @@ export async function POST(req: Request) {
         bio: b.bio.trim(),
         specializations: b.specializations,
         qualifications: b.qualifications,
-        sessionRate: new Prisma.Decimal(15000),
+        sessionRate: new Prisma.Decimal(20000),
         sessionDuration: 50,
         status: "pending",
         profilePhoto: null,

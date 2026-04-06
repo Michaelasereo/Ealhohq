@@ -5,6 +5,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 
 import { formatNgn } from "@/lib/format-ngn";
+import { therapistPublicLabel } from "@/lib/therapist-display-name";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -108,7 +109,9 @@ export function TherapistDetailSheet({
         ) : (
           <>
             <SheetHeader>
-              <SheetTitle>{therapist.profile.fullName}</SheetTitle>
+              <SheetTitle>
+                {therapistPublicLabel(therapist.profile.fullName)}
+              </SheetTitle>
               <SheetDescription>
                 Therapist profile · {therapist.status}
               </SheetDescription>
@@ -133,7 +136,7 @@ export function TherapistDetailSheet({
                     type="number"
                     min={1}
                     step={1}
-                    placeholder="15000"
+                    placeholder="20000"
                     value={sessionRateInput}
                     onChange={(e) => setSessionRateInput(e.target.value)}
                     className="min-h-11"

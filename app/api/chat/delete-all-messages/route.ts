@@ -2,6 +2,7 @@ import { randomUUID } from "crypto";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { resolveAppRole } from "@/lib/auth/resolve-app-role";
 import { deletionScheduledAtFromNow } from "@/lib/chat/deletion-schedule";
 import {
   chatDeletionScheduledHtml,
@@ -37,7 +38,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const role = user.app_metadata?.role as string | undefined;
+    const role = await resolveAppRole(user.id);
     if (role !== "patient") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
@@ -51,7 +52,7 @@ export async function POST(req: Request) {
     const patient = await ensureRegisteredPatientForUser(user);
     if (!patient) {
       return NextResponse.json(
-        { error: "Patient profile required" },
+        { error: "Client profile required" },
         { status: 403 },
       );
     }

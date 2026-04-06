@@ -8,8 +8,11 @@ import { X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { LoadingWithCopy } from "@/components/shared/LoadingWithCopy";
 import { Skeleton } from "@/components/ui/skeleton";
+import { REBOOK_MESSAGES } from "@/lib/loading-messages";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 export type QuickRebookModalProps = {
   therapistId: string;
@@ -118,6 +121,7 @@ export function QuickRebookModal({
   }, [creditsQ.data]);
 
   const bookMut = useMutation({
+    onMutate: () => ({ toastId: toast.loading("Processing payment...") }),
     mutationFn: async () => {
       setLocalError(null);
       if (!selected) throw new Error("Choose a time slot.");
@@ -179,8 +183,10 @@ export function QuickRebookModal({
 
       return { redirected: false as const };
     },
-    onSuccess: (res) => {
+    onSuccess: (res, _v, ctx) => {
+      if (ctx?.toastId) toast.dismiss(ctx.toastId);
       if (res.redirected) return;
+      toast.success("Session booked! ✅");
       void qc.invalidateQueries({ queryKey: ["patient-sessions"] });
       void qc.invalidateQueries({ queryKey: ["patient-dashboard"] });
       void qc.invalidateQueries({ queryKey: ["credits-balance"] });
@@ -188,11 +194,13 @@ export function QuickRebookModal({
       onBooked?.();
       onClose();
     },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.toastId) toast.dismiss(ctx.toastId);
+      toast.error("Payment failed. Please try again.");
+    },
   });
 
-  const displayName = therapistName.match(/^dr\.?\s/i)
-    ? therapistName
-    : `Dr. ${therapistName}`;
+  const displayName = therapistName;
   const busy = bookMut.isPending || qb.isLoading;
   const balance = creditsQ.data ?? 0;
   const hasCredits = balance >= 1;
@@ -246,10 +254,8 @@ export function QuickRebookModal({
 
         <div className="space-y-4 px-4 pb-8 pt-4">
           {qb.isLoading ? (
-            <div className="space-y-2">
-              <Skeleton className="h-20 w-full rounded-xl" />
-              <Skeleton className="h-20 w-full rounded-xl" />
-              <Skeleton className="h-20 w-full rounded-xl" />
+            <div className="flex min-h-[140px] items-center justify-center py-4">
+              <LoadingWithCopy messages={[...REBOOK_MESSAGES]} size="md" />
             </div>
           ) : qb.isError ? (
             <p className="text-sm text-destructive">

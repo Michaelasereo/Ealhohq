@@ -55,7 +55,7 @@ export async function GET() {
     const merged: AdminSettingsPayload = {
       platformName: String(stored.platformName ?? "Ealho Therapy"),
       supportEmail: String(stored.supportEmail ?? "hello@ealhohq.com"),
-      defaultSessionRateNgn: Number(stored.defaultSessionRateNgn ?? 15000),
+      defaultSessionRateNgn: Number(stored.defaultSessionRateNgn ?? 20000),
       defaultSessionDuration: Number(stored.defaultSessionDuration ?? 50),
       bookingWindowWeeks: Number(stored.bookingWindowWeeks ?? 4),
       minimumNoticeHours: Number(stored.minimumNoticeHours ?? 2),

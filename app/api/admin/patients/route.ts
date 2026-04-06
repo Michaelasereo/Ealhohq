@@ -26,7 +26,7 @@ export async function GET() {
 
     return NextResponse.json({ success: true, data: patients });
   } catch (e) {
-    console.error("admin patients GET:", e);
+    console.error("admin clients list GET:", e);
     return NextResponse.json(
       { error: "Failed to load patients" },
       { status: 500 },

@@ -7,10 +7,12 @@ import {
   formatBookingDateLong,
   formatSlotTo12h,
 } from "@/lib/booking/display-wat";
+import { emailMarkLogoImg } from "@/lib/emails/partials";
 import { sessionJoinUrl } from "@/lib/reminders/format-session-link";
 import { sendTransactionalEmail } from "@/lib/reminders/send-email";
 import { sendWhatsApp } from "@/lib/whatsapp/client";
 import { templates } from "@/lib/whatsapp/templates";
+import { therapistPublicLabel } from "@/lib/therapist-display-name";
 import { bookingDateStartToIso, formatWAT, watDayStart } from "@/lib/wat-datetime";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -70,6 +72,7 @@ export async function POST(req: Request) {
       isAnonymous?: boolean;
       sendConfirmation?: boolean;
       manualTime?: boolean;
+      professionalType?: string | null;
     };
 
     const therapistId = typeof body.therapistId === "string" ? body.therapistId : "";
@@ -84,6 +87,11 @@ export async function POST(req: Request) {
     const sendConfirmation = body.sendConfirmation !== false;
     const guestPhoneFromBody =
       typeof body.guestPhone === "string" ? body.guestPhone.trim() : "";
+    const professionalTypeRaw =
+      typeof body.professionalType === "string" ? body.professionalType.trim() : "";
+    const professionalTypeStored = professionalTypeRaw
+      ? professionalTypeRaw.slice(0, 300)
+      : null;
 
     if (!therapistId || !DATE_RE.test(dateStr) || !TIME_RE.test(startTime)) {
       return NextResponse.json(
@@ -109,7 +117,7 @@ export async function POST(req: Request) {
       const gPhone = typeof body.guestPhone === "string" ? body.guestPhone.trim() : "";
       if (!gName || !gEmail) {
         return NextResponse.json(
-          { error: "Guest name and email are required when no patient is selected" },
+          { error: "Guest name and email are required when no client is selected" },
           { status: 400 },
         );
       }
@@ -133,7 +141,7 @@ export async function POST(req: Request) {
       where: { id: resolvedPatientId! },
     });
     if (!patientRow) {
-      return NextResponse.json({ error: "Patient not found" }, { status: 404 });
+      return NextResponse.json({ error: "Client not found" }, { status: 404 });
     }
 
     const [h, m] = startTime.split(":").map(Number);
@@ -162,10 +170,10 @@ export async function POST(req: Request) {
       const credit = await prisma.therapyCredit.findUnique({
         where: { patientId: resolvedPatientId! },
       });
-      const balance = credit?.balance ?? 0;
+      const balance = Number(credit?.balance ?? 0);
       if (balance < 1) {
         return NextResponse.json(
-          { error: "Patient has no credits available" },
+          { error: "Client has no credits available" },
           { status: 400 },
         );
       }
@@ -199,6 +207,7 @@ export async function POST(req: Request) {
         consentConfirmed: true,
         consentTimestamp: new Date(),
         paidWithCredits,
+        professionalType: professionalTypeStored,
       },
     });
 
@@ -255,8 +264,8 @@ export async function POST(req: Request) {
       const timeWat = formatWAT(iso);
       const html = `
         <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 24px;">
-          <h1 style="font-size: 24px; font-weight: 700; color: #292612;">ealho</h1>
-          <h2 style="font-size: 20px; font-weight: 600; color: #111; margin-bottom: 8px;">Your session is confirmed</h2>
+          ${emailMarkLogoImg({ maxHeightPx: 44, align: "left" })}
+          <h2 style="font-size: 20px; font-weight: 600; color: #111; margin: 20px 0 8px;">Your session is confirmed</h2>
           <p style="color: #555; line-height: 1.6; margin-bottom: 24px;">A therapy session has been scheduled for you.</p>
           <div style="background: #f5f5f5; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
             <p style="margin: 0 0 8px; color: #333;"><strong>Date:</strong> ${dateLine}</p>
@@ -281,8 +290,8 @@ export async function POST(req: Request) {
         body: templates.bookingConfirmed({
           patientName: isAnonymous
             ? "there"
-            : guestNameFromBody || patientRow.fullName || "Patient",
-          therapistName: therapist.profile.fullName,
+            : guestNameFromBody || patientRow.fullName || "Client",
+          therapistName: therapistPublicLabel(therapist.profile.fullName),
           date: formatBookingDateLong(day),
           time: formatSlotTo12h(startTime),
           duration: therapist.sessionDuration,

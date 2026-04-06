@@ -5,6 +5,7 @@ import { Prisma } from "@prisma/client";
 import { findAuthUserByEmail } from "@/lib/auth/find-auth-user-by-email";
 import { isAdminUser } from "@/lib/auth/is-admin";
 import { appBaseUrl } from "@/lib/app-url";
+import { emailMarkLogoImg } from "@/lib/emails/partials";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { prisma } from "@/lib/prisma/client";
@@ -62,7 +63,7 @@ export async function POST(req: Request) {
     const qualifications = Array.isArray(body.qualifications)
       ? body.qualifications.filter((s) => typeof s === "string" && s.trim())
       : [];
-    const sessionRateNgn = Number(body.sessionRate ?? 15000);
+    const sessionRateNgn = Number(body.sessionRate ?? 20000);
     const sessionDuration = [50, 60, 90].includes(Number(body.sessionDuration))
       ? Number(body.sessionDuration)
       : 50;
@@ -130,10 +131,8 @@ export async function POST(req: Request) {
     const first = fullName.split(/\s+/)[0] ?? fullName;
     const html = `
         <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 24px;">
-          <div style="margin-bottom: 32px;">
-            <h1 style="font-size: 24px; font-weight: 700; color: #292612; margin: 0;">ealho</h1>
-          </div>
-          <h2 style="font-size: 20px; font-weight: 600; color: #111; margin-bottom: 8px;">
+          ${emailMarkLogoImg({ maxHeightPx: 44, align: "left" })}
+          <h2 style="font-size: 20px; font-weight: 600; color: #111; margin: 24px 0 8px;">
             Welcome to Ealho Therapy, ${first}
           </h2>
           <p style="color: #555; margin-bottom: 24px; line-height: 1.6;">

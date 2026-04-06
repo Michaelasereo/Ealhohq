@@ -13,14 +13,14 @@ function MessagesInner() {
 
 export default function PatientMessagesPage() {
   return (
-    <main className="mx-auto min-h-screen w-full max-w-md bg-white">
+    <div className="w-full max-w-5xl bg-white px-4 pb-24 pt-4 md:mx-auto md:px-6 md:pb-8 md:pt-6">
       <Suspense
         fallback={
-          <p className="p-4 text-sm text-muted-foreground">Loading…</p>
+          <p className="text-sm text-muted-foreground">Loading…</p>
         }
       >
         <MessagesInner />
       </Suspense>
-    </main>
+    </div>
   );
 }

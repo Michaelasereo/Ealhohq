@@ -25,7 +25,12 @@ type SessionPayload = {
   notesGenerated: boolean;
   sessionNumber: number;
   patient: { id: string; fullName: string; email: string; phone: string };
-  booking: { id: string; isAnonymous: boolean; clientId: string };
+  booking: {
+    id: string;
+    isAnonymous: boolean;
+    clientId: string;
+    professionalType: string | null;
+  };
 };
 
 export default function TherapistSessionDetailPage() {
@@ -116,6 +121,11 @@ export default function TherapistSessionDetailPage() {
         <div className="flex flex-wrap items-center gap-2">
           <p className="text-lg font-medium">{data.patient.fullName}</p>
           {data.booking.isAnonymous ? <AnonymousBadge /> : null}
+          {data.booking.professionalType ? (
+            <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-500">
+              {data.booking.professionalType}
+            </span>
+          ) : null}
         </div>
         {data.patient.email ? (
           <p className="text-muted-foreground">{data.patient.email}</p>

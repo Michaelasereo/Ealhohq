@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma/client";
+import { therapistPublicLabel } from "@/lib/therapist-display-name";
 import { bookingDateStartToIso } from "@/lib/wat-datetime";
 
 type Ctx = { params: Promise<{ bookingId: string }> };
@@ -33,7 +34,7 @@ export async function GET(_req: Request, ctx: Ctx) {
     return NextResponse.json({
       success: true,
       data: {
-        therapistName: booking.therapist.profile.fullName,
+        therapistName: therapistPublicLabel(booking.therapist.profile.fullName),
         therapistPhoto:
           booking.therapist.profilePhoto ?? "/Ealho-logo.png",
         date: booking.date.toISOString(),

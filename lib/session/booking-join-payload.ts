@@ -1,6 +1,8 @@
 import type { TherapyBooking, TherapySession, TherapyTherapist } from "@prisma/client";
 import type { SharedProfile } from "@prisma/client";
 
+import { therapistPublicLabel } from "@/lib/therapist-display-name";
+
 export type SessionJoinPayload = {
   bookingId: string;
   sessionId: string;
@@ -36,7 +38,7 @@ export function toJoinPayload(
   return {
     bookingId: booking.id,
     sessionId: booking.session.id,
-    therapistName: booking.therapist.profile.fullName,
+    therapistName: therapistPublicLabel(booking.therapist.profile.fullName),
     therapistPhoto: booking.therapist.profilePhoto,
     date: booking.date.toISOString(),
     startTime: booking.startTime,

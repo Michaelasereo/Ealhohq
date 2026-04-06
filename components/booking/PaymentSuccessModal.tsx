@@ -9,6 +9,7 @@ import { useEffect, useState } from "react";
 import { formatSlot12hWat, formatWatLongDate } from "@/lib/booking/display-wat";
 import { bookingDateToWatYmd } from "@/lib/wat-datetime";
 import { useBookingStore } from "@/stores/bookingStore";
+import { toast } from "sonner";
 
 type BookingDetail = {
   id: string;
@@ -114,6 +115,7 @@ export function PaymentSuccessModal() {
         });
         setState("success");
         resetDraft();
+        toast.success("Session booked! ✅");
       } catch {
         if (!cancelled) {
           setMessage("Could not load booking");

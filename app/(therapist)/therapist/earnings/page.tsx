@@ -11,13 +11,17 @@ import { cn } from "@/lib/utils";
 
 type EarningsPayload = {
   sessionRate: number;
+  therapistPercent: number;
+  platformPercent: number;
   totals: { allTime: number; thisMonth: number; thisWeek: number };
   sessions: {
     id: string;
     date: string;
     patientName: string;
     sessionType: string;
-    amount: number;
+    sessionRateFull: number;
+    therapistEarnings: number;
+    platformEarnings: number;
   }[];
 };
 
@@ -62,15 +66,21 @@ export default function TherapistEarningsPage() {
     );
   }
 
-  const { totals, sessions } = data;
+  const { totals, sessions, therapistPercent, platformPercent, sessionRate } =
+    data;
 
   if (sessions.length === 0) {
     return (
       <main className="mx-auto max-w-3xl space-y-6 p-4 pb-20">
         <header>
           <h1 className="text-2xl font-semibold">Earnings</h1>
-          <p className="text-sm text-muted-foreground">Paid completed sessions (NGN).</p>
+          <p className="text-sm text-muted-foreground">
+            Your share of paid, completed sessions (NGN).
+          </p>
         </header>
+        <span className="inline-flex rounded-full bg-muted px-3 py-1 text-xs font-medium">
+          Your rate: {therapistPercent}% per session · Platform {platformPercent}%
+        </span>
         <Card>
           <CardContent className="flex flex-col items-center gap-4 py-14 text-center">
             <DollarSign className="size-12 text-gray-300" strokeWidth={1.5} />
@@ -95,11 +105,15 @@ export default function TherapistEarningsPage() {
 
   return (
     <main className="mx-auto min-h-screen w-full max-w-3xl space-y-8 p-4 pb-20">
-      <header>
+      <header className="space-y-2">
         <h1 className="text-2xl font-semibold">Earnings</h1>
         <p className="text-sm text-muted-foreground">
-          Totals from paid, completed sessions (WAT dates).
+          List price ₦{sessionRate.toLocaleString("en-NG")} — amounts below are
+          your share only (WAT dates).
         </p>
+        <span className="inline-flex rounded-full bg-muted px-3 py-1 text-xs font-medium">
+          Your rate: {therapistPercent}% per session · Platform {platformPercent}%
+        </span>
       </header>
 
       <div className="grid gap-3 sm:grid-cols-3">
@@ -146,9 +160,17 @@ export default function TherapistEarningsPage() {
                   · {s.sessionType === "intake" ? "Intake" : "Follow-up"}
                 </p>
               </div>
-              <span className="font-semibold tabular-nums">
-                ₦{s.amount.toLocaleString("en-NG")}
-              </span>
+              <div className="text-right">
+                <p className="font-semibold tabular-nums text-emerald-700 dark:text-emerald-400">
+                  ₦{s.therapistEarnings.toLocaleString("en-NG")}{" "}
+                  <span className="text-xs font-normal text-muted-foreground">
+                    your share
+                  </span>
+                </p>
+                <p className="text-xs text-muted-foreground tabular-nums">
+                  ₦{s.sessionRateFull.toLocaleString("en-NG")} session total
+                </p>
+              </div>
             </li>
           ))}
         </ul>

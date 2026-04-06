@@ -27,7 +27,7 @@ export async function GET() {
       where: { patientId: patient.id },
     });
 
-    const balance = credit?.balance ?? 0;
+    const balance = Number(credit?.balance ?? 0);
 
     return NextResponse.json({
       success: true,
@@ -37,7 +37,7 @@ export async function GET() {
       },
     });
   } catch (e) {
-    console.error("patient/credits GET:", e);
+    console.error("client credits GET:", e);
     return NextResponse.json(
       { error: "Failed to fetch credits" },
       { status: 500 },

@@ -134,7 +134,7 @@ export async function GET() {
       meta: { timestamp: new Date().toISOString() },
     });
   } catch (e) {
-    console.error("patient/me error:", e);
+    console.error("client/me error:", e);
     return NextResponse.json(
       {
         success: false,

@@ -25,7 +25,7 @@ const PATIENT_NAV = [
   { label: "History", href: "/history", icon: ClipboardList },
   { label: "Profile", href: "/profile", icon: User },
   { label: "Credits", href: "/credits", icon: CreditCard },
-];
+] as const;
 
 export default function PatientLayout({
   children,
@@ -74,7 +74,7 @@ export default function PatientLayout({
         <div className="flex min-h-32 w-full items-center justify-between gap-2 border-b border-gray-100 px-6 py-2">
           <EalhoBrandLogo />
           <span className="shrink-0 text-xs font-medium text-gray-400">
-            patient
+            client
           </span>
         </div>
 
@@ -102,13 +102,13 @@ export default function PatientLayout({
                   />
                 ) : null}
                 <Icon size={18} strokeWidth={1.5} />
-                {item.label}
+                <span className="truncate">{item.label}</span>
               </Link>
             );
           })}
 
           <Link
-            href="/book"
+            href="/dashboard?view=book"
             className={cn(
               buttonVariants({ variant: "default" }),
               "mt-4 flex w-full min-h-12 items-center justify-start gap-3 px-3 py-2.5 text-sm font-medium",
@@ -139,7 +139,7 @@ export default function PatientLayout({
               <p className="truncate text-sm font-medium text-gray-900">
                 {profile?.name ?? "Loading…"}
               </p>
-              <p className="text-xs text-gray-400">Patient</p>
+              <p className="text-xs text-gray-400">Client</p>
             </div>
           </div>
 
@@ -157,7 +157,7 @@ export default function PatientLayout({
       <main className="min-h-screen pb-20 md:ml-64 md:pb-0">{children}</main>
 
       <nav className="fixed bottom-0 left-0 right-0 z-30 border-t border-gray-100 bg-white pb-[max(env(safe-area-inset-bottom),8px)] pt-2 md:hidden">
-        <div className="flex h-16 items-center justify-around px-2">
+        <div className="flex h-16 items-center justify-around gap-0.5 px-1">
           {PATIENT_NAV.map((item) => {
             const isActive =
               pathname === item.href ||
@@ -168,12 +168,12 @@ export default function PatientLayout({
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "flex flex-col items-center gap-0.5 rounded-lg px-2 py-1",
+                  "relative flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-lg px-1 py-1",
                   isActive ? "text-primary" : "text-gray-400",
                 )}
               >
                 <Icon size={20} strokeWidth={1.5} />
-                <span className="max-w-[64px] truncate text-xs font-medium">
+                <span className="max-w-[56px] truncate text-[10px] font-medium leading-tight sm:max-w-[64px] sm:text-xs">
                   {item.label}
                 </span>
               </Link>

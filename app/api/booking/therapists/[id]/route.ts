@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { formatNaira } from "@/lib/format/currency";
 import { getTherapistById } from "@/lib/queries/therapists";
+import { therapistPublicLabel } from "@/lib/therapist-display-name";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -20,7 +21,10 @@ function serializeTherapist(
     sessionRateFormatted: formatNaira(t.sessionRate),
     sessionDuration: t.sessionDuration,
     createdAt: t.createdAt.toISOString(),
-    profile: t.profile,
+    profile: {
+      ...t.profile,
+      fullName: therapistPublicLabel(t.profile.fullName),
+    },
     availabilitySchedule: t.availabilitySchedule,
     availabilityOverrides: t.availabilityOverrides.map((o) => ({
       ...o,

@@ -1,5 +1,9 @@
 import { firstName, normalizeNgDigits } from "@/lib/rebooking/phone";
 import { prisma } from "@/lib/prisma/client";
+import {
+  therapistFirstNameForGreeting,
+  therapistPublicLabel,
+} from "@/lib/therapist-display-name";
 import { sendWhatsAppText } from "@/lib/reminders/send-whatsapp";
 
 function appBase(): string {
@@ -8,7 +12,7 @@ function appBase(): string {
 }
 
 /**
- * Finds chat threads where the latest message is from the patient and older than `hoursThreshold`.
+ * Finds chat threads where the latest message is from the client and older than `hoursThreshold`.
  */
 export async function findSlaBreachThreads(hoursThreshold: number) {
   const threads = await prisma.chatThread.findMany({
@@ -63,7 +67,7 @@ export async function findSlaBreachThreads(hoursThreshold: number) {
       threadId: t.id,
       therapistId: t.therapistId,
       patientFirstName: firstName(t.patient.fullName),
-      therapistName: t.therapist.profile.fullName,
+      therapistName: therapistPublicLabel(t.therapist.profile.fullName),
       therapistPhone: t.therapist.profile.phone,
       lastPatientMessageAt: last.createdAt,
       hoursWithoutReply: Math.floor(delta / (60 * 60 * 1000)),
@@ -146,7 +150,7 @@ export async function runChatSlaRemindersAndEscalations(): Promise<{
     if (!fresh.slaTherapistRemindedAt && tPhone) {
       await sendWhatsAppText({
         toE164Digits: tPhone,
-        body: `Hi ${thread.therapist.profile.fullName.split(/\s+/)[0] ?? "Doctor"}, a patient is waiting for your reply on Ealho. Please check your messages:\n${appBase()}/therapist/messages`,
+        body: `Hi ${therapistFirstNameForGreeting(thread.therapist.profile.fullName)}, a client is waiting for your reply on Ealho. Please check your messages:\n${appBase()}/therapist/messages`,
       });
       await prisma.chatThread.update({
         where: { id: threadId },
@@ -159,7 +163,7 @@ export async function runChatSlaRemindersAndEscalations(): Promise<{
       const pf = firstName(thread.patient.fullName);
       await sendWhatsAppText({
         toE164Digits: adminWa,
-        body: `SLA Alert: ${thread.therapist.profile.fullName} has not replied to ${pf} for ${Math.floor(hours)} hours.\nReview: ${appBase()}/admin/chat`,
+        body: `SLA Alert: ${therapistPublicLabel(thread.therapist.profile.fullName)} has not replied to ${pf} for ${Math.floor(hours)} hours.\nReview: ${appBase()}/admin/chat`,
       });
       await prisma.chatThread.update({
         where: { id: threadId },
@@ -195,10 +199,10 @@ export async function runChatSlaRemindersAndEscalations(): Promise<{
 
     for (const m of stale) {
       const pf = firstName(m.thread.patient.fullName);
-      const dr = m.thread.therapist.profile.fullName;
+      const tLabel = therapistPublicLabel(m.thread.therapist.profile.fullName);
       await sendWhatsAppText({
         toE164Digits: clinical,
-        body: `Unresolved HIGH risk chat flag (>2h).\nPatient: ${pf} · ${dr}\n${appBase()}/admin/chat`,
+        body: `Unresolved HIGH risk chat flag (>2h).\nClient: ${pf} · ${tLabel}\n${appBase()}/admin/chat`,
       });
       await prisma.chatMessage.update({
         where: { id: m.id },

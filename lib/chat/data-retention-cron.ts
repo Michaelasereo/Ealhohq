@@ -14,7 +14,7 @@ function appBase(): string {
 }
 
 /**
- * Purges due threads and notifies each patient once (email + WhatsApp when configured).
+ * Purges due threads and notifies each client once (email + WhatsApp when configured).
  */
 export async function runDataRetentionCron(): Promise<{
   threadsPurged: number;

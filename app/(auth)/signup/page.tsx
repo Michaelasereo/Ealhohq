@@ -103,11 +103,10 @@ function SignupPageContent() {
   };
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-[375px] flex-col justify-center px-4 py-8">
-      <Card className="w-full border-border shadow-md">
+    <Card className="w-full border-border bg-white shadow-md">
         <CardHeader>
           <CardTitle className="text-2xl">Create account</CardTitle>
-          <CardDescription>Patient registration for Ealho Therapy</CardDescription>
+          <CardDescription>Client registration for Ealho Therapy</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -233,7 +232,6 @@ function SignupPageContent() {
           </p>
         </CardContent>
       </Card>
-    </main>
   );
 }
 
@@ -241,14 +239,12 @@ export default function SignupPage() {
   return (
     <Suspense
       fallback={
-        <main className="mx-auto flex min-h-screen w-full max-w-[375px] flex-col justify-center px-4 py-8">
-          <Card className="w-full border-border shadow-md">
-            <CardHeader>
-              <CardTitle className="text-2xl">Create account</CardTitle>
-              <CardDescription>Loading…</CardDescription>
-            </CardHeader>
-          </Card>
-        </main>
+        <Card className="w-full border-border bg-white shadow-md">
+          <CardHeader>
+            <CardTitle className="text-2xl">Create account</CardTitle>
+            <CardDescription>Loading…</CardDescription>
+          </CardHeader>
+        </Card>
       }
     >
       <SignupPageContent />

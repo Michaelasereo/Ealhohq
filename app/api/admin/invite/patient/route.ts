@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { findAuthUserByEmail } from "@/lib/auth/find-auth-user-by-email";
 import { isAdminUser } from "@/lib/auth/is-admin";
 import { appBaseUrl } from "@/lib/app-url";
+import { emailMarkLogoImg } from "@/lib/emails/partials";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { prisma } from "@/lib/prisma/client";
@@ -75,7 +76,7 @@ export async function POST(req: Request) {
       });
 
     if (createError || !created.user) {
-      console.error("createUser patient:", createError);
+      console.error("createUser client invite:", createError);
       return NextResponse.json(
         { error: createError?.message ?? "Failed to create user" },
         { status: 500 },
@@ -123,10 +124,10 @@ export async function POST(req: Request) {
         });
       }
     } catch (dbErr) {
-      console.error("Invite patient DB rollback:", dbErr);
+      console.error("Invite client DB rollback:", dbErr);
       await adminSb.auth.admin.deleteUser(uid);
       return NextResponse.json(
-        { error: "Failed to create patient profile" },
+        { error: "Failed to create client profile" },
         { status: 500 },
       );
     }
@@ -137,8 +138,8 @@ export async function POST(req: Request) {
     const first = fullName.split(/\s+/)[0] ?? fullName;
     const html = `
         <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 24px;">
-          <h1 style="font-size: 24px; font-weight: 700; color: #292612; margin: 0 0 24px;">ealho</h1>
-          <h2 style="font-size: 20px; font-weight: 600; color: #111; margin-bottom: 8px;">
+          ${emailMarkLogoImg({ maxHeightPx: 44, align: "left" })}
+          <h2 style="font-size: 20px; font-weight: 600; color: #111; margin: 24px 0 8px;">
             Your Ealho Therapy account is ready
           </h2>
           <p style="color: #555; line-height: 1.6; margin-bottom: 24px;">
@@ -165,9 +166,9 @@ export async function POST(req: Request) {
       html,
     });
     if (!sent.success) {
-      console.error("Invite patient email:", sent.error);
+      console.error("Invite client email:", sent.error);
       return NextResponse.json(
-        { error: "Patient created but email failed to send" },
+        { error: "Client created but email failed to send" },
         { status: 502 },
       );
     }
@@ -182,7 +183,7 @@ export async function POST(req: Request) {
           setupLink,
           role: "patient",
         }),
-      }).catch((err) => console.error("Invite patient WhatsApp:", err));
+      }).catch((err) => console.error("Invite client WhatsApp:", err));
     }
 
     return NextResponse.json({
@@ -190,7 +191,7 @@ export async function POST(req: Request) {
       data: { message: "Invite sent successfully", email },
     });
   } catch (error) {
-    console.error("Invite patient error:", error);
+    console.error("Invite client error:", error);
     return NextResponse.json({ error: "Failed to send invite" }, { status: 500 });
   }
 }

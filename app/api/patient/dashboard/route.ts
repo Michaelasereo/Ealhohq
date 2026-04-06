@@ -4,6 +4,7 @@ import { tierFromBalance } from "@/lib/credits/purchase-config";
 import { getPatientByProfileId } from "@/lib/queries/patient";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma/client";
+import { therapistPublicLabel } from "@/lib/therapist-display-name";
 import { bookingDateStartToIso } from "@/lib/wat-datetime";
 import { watDayStart, watTodayDateString } from "@/lib/wat-datetime";
 
@@ -12,8 +13,51 @@ function firstName(fullName: string) {
   return t.split(/\s+/)[0] ?? t;
 }
 
-export async function GET() {
+function toSessionJson(b: {
+  id: string;
+  date: Date;
+  startTime: string;
+  endTime: string;
+  sessionType: string;
+  therapist: {
+    id: string;
+    profilePhoto: string | null;
+    profile: { fullName: string };
+  };
+  session: {
+    id: string;
+    sessionNumber: number;
+    feedbacks?: { id: string }[];
+  } | null;
+}) {
+  return {
+    id: b.id,
+    date: b.date.toISOString(),
+    startTime: b.startTime,
+    endTime: b.endTime,
+    sessionType: b.sessionType,
+    therapist: {
+      id: b.therapist.id,
+      name: therapistPublicLabel(b.therapist.profile.fullName),
+      photo: b.therapist.profilePhoto ?? "/Ealho-logo.png",
+    },
+    session: b.session
+      ? {
+          id: b.session.id,
+          sessionNumber: b.session.sessionNumber,
+          feedbackSubmitted:
+            "feedbacks" in b.session &&
+            Array.isArray(b.session.feedbacks) &&
+            b.session.feedbacks.length > 0,
+        }
+      : null,
+  };
+}
+
+export async function GET(req: Request) {
   try {
+    const zone = new URL(req.url).searchParams.get("zone");
+
     const supabase = await createClient();
     const {
       data: { user },
@@ -29,21 +73,131 @@ export async function GET() {
     const patient = await getPatientByProfileId(user.id);
 
     if (!patient) {
-      return NextResponse.json({
-        success: true,
-        data: {
-          profile: { fullName: profile?.fullName ?? "" },
-          firstName: profile ? firstName(profile.fullName) : "there",
-          upcomingSession: null,
-          recentSessions: [],
-          credits: { balance: 0, tier: tierFromBalance(0) },
-          totalSessions: 0,
-        },
-      });
+      const empty = {
+        profile: { fullName: profile?.fullName ?? "" },
+        firstName: profile ? firstName(profile.fullName) : "there",
+        upcomingSession: null,
+        recentSessions: [] as ReturnType<typeof toSessionJson>[],
+        credits: { balance: 0, tier: tierFromBalance(0) },
+        totalSessions: 0,
+      };
+      if (zone === "stats") {
+        return NextResponse.json({
+          success: true,
+          data: {
+            firstName: empty.firstName,
+            totalSessions: 0,
+            credits: empty.credits,
+          },
+        });
+      }
+      if (zone === "next") {
+        return NextResponse.json({
+          success: true,
+          data: { upcomingSession: null },
+        });
+      }
+      if (zone === "recent") {
+        return NextResponse.json({
+          success: true,
+          data: { recentSessions: [] },
+        });
+      }
+      return NextResponse.json({ success: true, data: empty });
     }
 
     const todayStart = watDayStart(watTodayDateString());
     const nowMs = Date.now();
+
+    if (zone === "stats") {
+      const totalSessions = await prisma.therapyBooking.count({
+        where: {
+          patientId: patient.id,
+          status: { in: ["confirmed", "completed"] },
+        },
+      });
+      const credit = await prisma.therapyCredit.findUnique({
+        where: { patientId: patient.id },
+      });
+      const balance = Number(credit?.balance ?? 0);
+      return NextResponse.json({
+        success: true,
+        data: {
+          firstName: firstName(
+            patient.profile?.fullName ?? patient.fullName,
+          ),
+          totalSessions,
+          credits: { balance, tier: tierFromBalance(balance) },
+        },
+      });
+    }
+
+    if (zone === "next") {
+      const confirmedBookings = await prisma.therapyBooking.findMany({
+        where: {
+          patientId: patient.id,
+          status: "confirmed",
+          date: { gte: todayStart },
+        },
+        include: {
+          therapist: { include: { profile: { select: { fullName: true } } } },
+          session: {
+            select: {
+              id: true,
+              sessionNumber: true,
+              feedbacks: { select: { id: true }, take: 1 },
+            },
+          },
+        },
+        orderBy: [{ date: "asc" }, { startTime: "asc" }],
+        take: 20,
+      });
+      let upcomingSession = null as (typeof confirmedBookings)[0] | null;
+      for (const b of confirmedBookings) {
+        const startMs = new Date(
+          bookingDateStartToIso(b.date, b.startTime),
+        ).getTime();
+        if (startMs > nowMs) {
+          upcomingSession = b;
+          break;
+        }
+      }
+      return NextResponse.json({
+        success: true,
+        data: {
+          upcomingSession: upcomingSession
+            ? toSessionJson(upcomingSession)
+            : null,
+        },
+      });
+    }
+
+    if (zone === "recent") {
+      const recentBookings = await prisma.therapyBooking.findMany({
+        where: {
+          patientId: patient.id,
+          status: "completed",
+        },
+        orderBy: [{ date: "desc" }, { startTime: "desc" }],
+        take: 3,
+        include: {
+          therapist: { include: { profile: { select: { fullName: true } } } },
+          session: {
+            select: {
+              id: true,
+              sessionNumber: true,
+              feedbacks: { select: { id: true }, take: 1 },
+            },
+          },
+        },
+      });
+      return NextResponse.json({
+        success: true,
+        data: {
+          recentSessions: recentBookings.map(toSessionJson),
+        },
+      });
+    }
 
     const confirmedBookings = await prisma.therapyBooking.findMany({
       where: {
@@ -105,38 +259,17 @@ export async function GET() {
     const credit = await prisma.therapyCredit.findUnique({
       where: { patientId: patient.id },
     });
-    const balance = credit?.balance ?? 0;
-
-    const toJson = (b: (typeof recentBookings)[0]) => ({
-      id: b.id,
-      date: b.date.toISOString(),
-      startTime: b.startTime,
-      endTime: b.endTime,
-      sessionType: b.sessionType,
-      therapist: {
-        id: b.therapist.id,
-        name: b.therapist.profile.fullName,
-        photo: b.therapist.profilePhoto ?? "/Ealho-logo.png",
-      },
-      session: b.session
-        ? {
-            id: b.session.id,
-            sessionNumber: b.session.sessionNumber,
-            feedbackSubmitted:
-              "feedbacks" in b.session &&
-              Array.isArray(b.session.feedbacks) &&
-              b.session.feedbacks.length > 0,
-          }
-        : null,
-    });
+    const balance = Number(credit?.balance ?? 0);
 
     return NextResponse.json({
       success: true,
       data: {
         profile: { fullName: patient.profile?.fullName ?? patient.fullName },
         firstName: firstName(patient.profile?.fullName ?? patient.fullName),
-        upcomingSession: upcomingSession ? toJson(upcomingSession) : null,
-        recentSessions: recentBookings.map(toJson),
+        upcomingSession: upcomingSession
+          ? toSessionJson(upcomingSession)
+          : null,
+        recentSessions: recentBookings.map(toSessionJson),
         credits: {
           balance,
           tier: tierFromBalance(balance),
@@ -145,7 +278,7 @@ export async function GET() {
       },
     });
   } catch (e) {
-    console.error("patient/dashboard:", e);
+    console.error("client dashboard:", e);
     return NextResponse.json(
       { error: "Failed to load dashboard" },
       { status: 500 },

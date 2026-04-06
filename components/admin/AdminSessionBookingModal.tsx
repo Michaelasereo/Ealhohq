@@ -22,6 +22,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { formatNgn } from "@/lib/format-ngn";
+import { PROFESSIONAL_TYPES } from "@/lib/booking/professional-types";
+import { therapistPublicLabel } from "@/lib/therapist-display-name";
 
 type TherapistRow = {
   id: string;
@@ -64,6 +66,7 @@ export function AdminSessionBookingModal({
   const [guestName, setGuestName] = useState("");
   const [guestEmail, setGuestEmail] = useState("");
   const [guestPhone, setGuestPhone] = useState("");
+  const [guestProfessionalType, setGuestProfessionalType] = useState("");
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [dateStr, setDateStr] = useState("");
   const [slots, setSlots] = useState<string[]>([]);
@@ -100,6 +103,7 @@ export function AdminSessionBookingModal({
     setGuestName("");
     setGuestEmail("");
     setGuestPhone("");
+    setGuestProfessionalType("");
     setIsAnonymous(false);
     setDateStr("");
     setStartTime("");
@@ -184,9 +188,11 @@ export function AdminSessionBookingModal({
       body.guestName = guestName.trim();
       body.guestEmail = guestEmail.trim();
       body.guestPhone = guestPhone.trim() || "";
+      const pt = guestProfessionalType.trim();
+      if (pt) body.professionalType = pt;
     }
     if (paymentType === "credits" && creditBalance < 1) {
-      setErr("Patient has no credits.");
+      setErr("Client has no credits.");
       setLoading(false);
       return;
     }
@@ -217,7 +223,7 @@ export function AdminSessionBookingModal({
         <DialogHeader className="px-4 pt-4 pb-2">
           <DialogTitle>Schedule session</DialogTitle>
           <DialogDescription>
-            Step {step} of 5 — manual booking for therapists and patients
+            Step {step} of 5 — manual booking for therapists and clients
           </DialogDescription>
         </DialogHeader>
 
@@ -237,7 +243,9 @@ export function AdminSessionBookingModal({
                         : "border-border hover:bg-muted/50"
                     }`}
                   >
-                    <p className="font-medium">{t.profile.fullName}</p>
+                    <p className="font-medium">
+                      {therapistPublicLabel(t.profile.fullName)}
+                    </p>
                     <p className="text-muted-foreground text-xs">
                       {t.specializations.slice(0, 4).join(" · ") || "—"}
                     </p>
@@ -264,7 +272,7 @@ export function AdminSessionBookingModal({
                   className="flex-1"
                   onClick={() => setPatientMode("existing")}
                 >
-                  Existing patient
+                  Existing client
                 </Button>
                 <Button
                   type="button"
@@ -332,6 +340,33 @@ export function AdminSessionBookingModal({
                       onChange={(e) => setGuestPhone(e.target.value)}
                       className="h-12"
                     />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>
+                      What best describes them?{" "}
+                      <span className="font-normal text-muted-foreground">
+                        (optional)
+                      </span>
+                    </Label>
+                    <select
+                      value={guestProfessionalType}
+                      onChange={(e) => setGuestProfessionalType(e.target.value)}
+                      className="border-input bg-background h-12 w-full cursor-pointer rounded-md border px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      <option value="">Select role…</option>
+                      {PROFESSIONAL_TYPES.map((group) => (
+                        <optgroup key={group.group} label={group.group}>
+                          {group.options.map((opt) => (
+                            <option key={opt} value={opt}>
+                              {opt}
+                            </option>
+                          ))}
+                        </optgroup>
+                      ))}
+                    </select>
+                    <p className="text-muted-foreground text-xs">
+                      Helps match context for the therapist.
+                    </p>
                   </div>
                   <label className="flex items-center gap-2 text-sm">
                     <input
@@ -442,7 +477,7 @@ export function AdminSessionBookingModal({
                 <div>
                   <p className="font-medium">Waive payment</p>
                   <p className="text-sm text-muted-foreground">
-                    Session is complimentary. No charge to patient.
+                    Session is complimentary. No charge to client.
                   </p>
                 </div>
               </button>
@@ -459,7 +494,7 @@ export function AdminSessionBookingModal({
                   strokeWidth={1.5}
                 />
                 <div>
-                  <p className="font-medium">Patient credits</p>
+                  <p className="font-medium">Client credits</p>
                   <p className="text-sm text-muted-foreground">
                     Balance:{" "}
                     {patientMode === "guest"
@@ -498,10 +533,12 @@ export function AdminSessionBookingModal({
             <div className="space-y-3 text-sm">
               <p>
                 <span className="text-muted-foreground">Therapist: </span>
-                {selectedTherapist?.profile.fullName}
+                {selectedTherapist
+                  ? therapistPublicLabel(selectedTherapist.profile.fullName)
+                  : null}
               </p>
               <p>
-                <span className="text-muted-foreground">Patient: </span>
+                <span className="text-muted-foreground">Client: </span>
                 {patientMode === "existing"
                   ? `${selectedPatient?.fullName} (${selectedPatient?.email})`
                   : `${guestName} (${guestEmail})`}

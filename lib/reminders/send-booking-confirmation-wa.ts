@@ -7,6 +7,10 @@ import {
 import { sendWhatsApp } from "@/lib/whatsapp/client";
 import { templates } from "@/lib/whatsapp/templates";
 import { sessionJoinUrl } from "@/lib/reminders/format-session-link";
+import {
+  therapistFirstNameForGreeting,
+  therapistPublicLabel,
+} from "@/lib/therapist-display-name";
 
 type BookingWa = Prisma.TherapyBookingGetPayload<{
   include: {
@@ -16,7 +20,7 @@ type BookingWa = Prisma.TherapyBookingGetPayload<{
 }>;
 
 /**
- * Sends paid-booking WhatsApp to patient and therapist when phone numbers exist.
+ * Sends paid-booking WhatsApp to the client and therapist when phone numbers exist.
  * Fire-and-forget; errors are logged only.
  */
 export async function sendBookingConfirmationWhatsAppIfPhone(
@@ -25,7 +29,12 @@ export async function sendBookingConfirmationWhatsAppIfPhone(
   const sessionLink = sessionJoinUrl(booking.id);
   const date = formatBookingDateLong(booking.date);
   const time = formatSlotTo12h(booking.startTime);
-  const therapistName = booking.therapist.profile.fullName;
+  const therapistLabel = therapistPublicLabel(
+    booking.therapist.profile.fullName,
+  );
+  const therapistGreeting = therapistFirstNameForGreeting(
+    booking.therapist.profile.fullName,
+  );
   const duration = booking.therapist.sessionDuration;
 
   const patientPhone = booking.guestPhone ?? booking.patient?.phone;
@@ -35,7 +44,7 @@ export async function sendBookingConfirmationWhatsAppIfPhone(
       body: templates.bookingConfirmed({
         patientName:
           booking.guestName ?? booking.patient?.fullName ?? "there",
-        therapistName,
+        therapistName: therapistLabel,
         date,
         time,
         duration,
@@ -49,12 +58,12 @@ export async function sendBookingConfirmationWhatsAppIfPhone(
   if (therapistPhone?.trim()) {
     const patientDisplay = booking.isAnonymous
       ? (booking.clientAlias ?? "Anonymous Client")
-      : (booking.guestName ?? booking.patient?.fullName ?? "Patient");
+      : (booking.guestName ?? booking.patient?.fullName ?? "Client");
 
     void sendWhatsApp({
       to: therapistPhone,
       body: templates.therapistSessionBooked({
-        therapistName,
+        therapistGreetingName: therapistGreeting,
         patientDisplay,
         date,
         time,

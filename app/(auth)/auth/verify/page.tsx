@@ -294,15 +294,14 @@ export default function AuthVerifyPage() {
 
   if (!mounted || !email) {
     return (
-      <div className="flex min-h-screen items-center justify-center p-8 text-muted-foreground">
+      <div className="flex min-h-[40vh] items-center justify-center py-12 text-muted-foreground">
         Loading…
       </div>
     );
   }
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-[375px] flex-col justify-center px-4 py-8">
-      <Card className="w-full border-border shadow-md">
+    <Card className="w-full border-border bg-white shadow-md">
         <CardHeader>
           <CardTitle className="text-2xl">Check your email</CardTitle>
           <CardDescription>
@@ -396,6 +395,5 @@ export default function AuthVerifyPage() {
           </div>
         </CardContent>
       </Card>
-    </main>
   );
 }

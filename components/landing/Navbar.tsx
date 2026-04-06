@@ -166,13 +166,13 @@ export function Navbar() {
             </li>
             <li>
               <Link
-                href="/organizations"
+                href="/for-organisations"
                 className={cn(
                   navLinkClass,
-                  pathname === "/organizations" && navLinkActiveClass,
+                  pathname === "/for-organisations" && navLinkActiveClass,
                 )}
               >
-                For Organizations
+                For Organisations
               </Link>
             </li>
           </ul>
@@ -234,11 +234,11 @@ export function Navbar() {
                   <ResourcesDropdown mobile />
                 </div>
                 <Link
-                  href="/organizations"
+                  href="/for-organisations"
                   onClick={() => setMobileOpen(false)}
                   className="flex min-h-12 items-center rounded-lg px-3 py-3 text-base font-medium text-gray-600"
                 >
-                  For Organizations
+                  For Organisations
                 </Link>
                 <div className="mt-4 flex flex-col gap-3 border-t border-border pt-4">
                   <Link

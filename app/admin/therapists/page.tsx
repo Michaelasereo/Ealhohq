@@ -9,7 +9,9 @@ import {
 } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
+import { EarningsSplitModal } from "@/components/admin/EarningsSplitModal";
 import { InviteTherapistModal } from "@/components/admin/InviteTherapistModal";
+import { therapistPublicLabel } from "@/lib/therapist-display-name";
 import { TherapistDetailSheet } from "@/components/admin/TherapistDetailSheet";
 import { Button } from "@/components/ui/button";
 import {
@@ -34,6 +36,10 @@ type TherapistRow = {
   email: string | null;
   profile: { fullName: string; phone: string | null };
   _count: { sessions: number; bookings: number };
+  therapistPercent: number;
+  platformPercent: number;
+  totalTherapistEarnings: number;
+  paidCompletedSessions: number;
 };
 
 async function fetchTherapists(
@@ -63,6 +69,7 @@ export default function AdminTherapistsPage() {
   );
   const [rejectId, setRejectId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState("");
+  const [earningsModal, setEarningsModal] = useState<TherapistRow | null>(null);
 
   const listQ = useQuery({
     queryKey: ["admin-therapists", tab],
@@ -308,6 +315,7 @@ export default function AdminTherapistsPage() {
             loading={listQ.isLoading}
             onSuspend={(id) => suspendM.mutate(id)}
             suspending={suspendM.isPending}
+            onEditEarnings={(t) => setEarningsModal(t)}
             onView={(t) => {
               setDetailTherapist(t);
               setDetailOpen(true);
@@ -321,6 +329,7 @@ export default function AdminTherapistsPage() {
             loading={listQ.isLoading}
             onSuspend={(id) => suspendM.mutate(id)}
             suspending={suspendM.isPending}
+            onEditEarnings={(t) => setEarningsModal(t)}
             onView={(t) => {
               setDetailTherapist(t);
               setDetailOpen(true);
@@ -348,6 +357,19 @@ export default function AdminTherapistsPage() {
         onOpenChange={setInviteOpen}
         onInvited={() => void qc.invalidateQueries({ queryKey: ["admin-therapists"] })}
       />
+
+      {earningsModal ? (
+        <EarningsSplitModal
+          open
+          onOpenChange={(o) => {
+            if (!o) setEarningsModal(null);
+          }}
+          therapistId={earningsModal.id}
+          therapistName={earningsModal.profile.fullName}
+          sessionRate={earningsModal.sessionRate}
+          currentTherapistPercent={earningsModal.therapistPercent}
+        />
+      ) : null}
     </div>
   );
 }
@@ -357,12 +379,14 @@ function TherapistTable({
   loading,
   onSuspend,
   suspending,
+  onEditEarnings,
   onView,
 }: {
   rows: TherapistRow[];
   loading: boolean;
   onSuspend: (id: string) => void;
   suspending: boolean;
+  onEditEarnings: (t: TherapistRow) => void;
   onView: (t: TherapistRow) => void;
 }) {
   if (loading) {
@@ -375,13 +399,14 @@ function TherapistTable({
   }
   return (
     <div className="overflow-x-auto rounded-lg border">
-      <table className="w-full min-w-[720px] text-left text-sm">
+      <table className="w-full min-w-[900px] text-left text-sm">
         <thead className="bg-muted/50">
           <tr>
             <th className="p-3 font-medium">Name</th>
             <th className="p-3 font-medium">Email</th>
             <th className="p-3 font-medium">Specializations</th>
             <th className="p-3 font-medium">Sessions</th>
+            <th className="p-3 font-medium">Split</th>
             <th className="p-3 font-medium">Status</th>
             <th className="p-3 font-medium">Joined</th>
             <th className="p-3 font-medium">Actions</th>
@@ -390,12 +415,25 @@ function TherapistTable({
         <tbody>
           {rows.map((t) => (
             <tr key={t.id} className="border-t">
-              <td className="p-3">{t.profile.fullName}</td>
+              <td className="p-3">
+                {therapistPublicLabel(t.profile.fullName)}
+              </td>
               <td className="p-3 text-muted-foreground">{t.email ?? "—"}</td>
               <td className="p-3 text-xs">
                 {t.specializations.slice(0, 3).join(", ")}
               </td>
               <td className="p-3">{t._count.sessions}</td>
+              <td className="p-3">
+                <div className="flex flex-col gap-1">
+                  <span className="inline-flex w-fit rounded-full bg-muted px-2 py-0.5 text-xs font-medium tabular-nums">
+                    {t.therapistPercent}/{t.platformPercent}
+                  </span>
+                  <span className="text-xs text-muted-foreground tabular-nums">
+                    ₦{t.totalTherapistEarnings.toLocaleString("en-NG")} ·{" "}
+                    {t.paidCompletedSessions} paid
+                  </span>
+                </div>
+              </td>
               <td className="p-3 capitalize">{t.status}</td>
               <td className="p-3 text-muted-foreground">
                 {new Date(t.createdAt).toLocaleDateString("en-NG")}
@@ -409,6 +447,15 @@ function TherapistTable({
                   >
                     View
                   </Button>
+                  {t.status === "approved" ? (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => onEditEarnings(t)}
+                    >
+                      Edit split
+                    </Button>
+                  ) : null}
                   {t.status !== "suspended" && t.status !== "rejected" ? (
                     <Button
                       size="sm"

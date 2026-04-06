@@ -13,8 +13,11 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Skeleton } from "@/components/ui/skeleton";
+import { LoadingWithCopy } from "@/components/shared/LoadingWithCopy";
+import { ADMIN_MESSAGES } from "@/lib/loading-messages";
+import { stripTherapistHonorific } from "@/lib/therapist-display-name";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 type PendingApplication = {
   id: string;
@@ -62,6 +65,7 @@ export default function AdminDashboardPage() {
   });
 
   const approve = useMutation({
+    onMutate: () => ({ toastId: toast.loading("Approving therapist...") }),
     mutationFn: async (therapistId: string) => {
       const res = await fetch(
         `/api/admin/therapists/${therapistId}/approve`,
@@ -70,7 +74,15 @@ export default function AdminDashboardPage() {
       const j = (await res.json().catch(() => ({}))) as { error?: string };
       if (!res.ok) throw new Error(j.error ?? "Approve failed");
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-dashboard"] }),
+    onSuccess: (_d, _id, ctx) => {
+      if (ctx?.toastId) toast.dismiss(ctx.toastId);
+      toast.success("Therapist approved ✅");
+      void qc.invalidateQueries({ queryKey: ["admin-dashboard"] });
+    },
+    onError: (_e, _id, ctx) => {
+      if (ctx?.toastId) toast.dismiss(ctx.toastId);
+      toast.error("Something went wrong.");
+    },
   });
 
   const reject = useMutation({
@@ -102,14 +114,8 @@ export default function AdminDashboardPage() {
 
   if (isLoading) {
     return (
-      <main className="mx-auto min-h-screen max-w-3xl space-y-6 p-4">
-        <Skeleton className="h-10 w-56" />
-        <div className="grid gap-3 sm:grid-cols-2">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-24 w-full" />
-          ))}
-        </div>
-        <Skeleton className="h-48 w-full" />
+      <main className="mx-auto flex min-h-[55vh] max-w-3xl flex-col items-center justify-center p-4">
+        <LoadingWithCopy messages={[...ADMIN_MESSAGES]} size="lg" />
       </main>
     );
   }
@@ -139,7 +145,7 @@ export default function AdminDashboardPage() {
       <section className="grid gap-3 sm:grid-cols-2">
         <Card>
           <CardHeader className="pb-2">
-            <CardDescription>Total patients</CardDescription>
+            <CardDescription>Total clients</CardDescription>
             <CardTitle className="text-2xl tabular-nums">
               {stats.totalPatients}
             </CardTitle>
@@ -191,7 +197,9 @@ export default function AdminDashboardPage() {
                 <Card>
                   <CardContent className="space-y-4 p-4">
                     <div>
-                      <p className="font-medium">{t.profile.fullName}</p>
+                      <p className="font-medium">
+                        {stripTherapistHonorific(t.profile.fullName)}
+                      </p>
                       <p className="text-sm text-muted-foreground">
                         {t.profile.phone ?? "No phone on file"}
                       </p>

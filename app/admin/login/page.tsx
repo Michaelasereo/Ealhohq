@@ -8,6 +8,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Loader2 } from "lucide-react";
 
+import { AuthChrome } from "@/components/auth/AuthChrome";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -64,8 +65,8 @@ export default function AdminLoginPage() {
   };
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-[375px] flex-col justify-center px-4 py-8">
-      <Card className="w-full border-border shadow-md">
+    <AuthChrome>
+      <Card className="w-full border-border bg-white shadow-md">
         <CardHeader>
           <CardTitle className="text-xl">Admin sign in</CardTitle>
           <CardDescription>Internal use only</CardDescription>
@@ -120,7 +121,7 @@ export default function AdminLoginPage() {
           </form>
           <p className="mt-6 text-center text-sm text-muted-foreground">
             <Link href="/login" className="underline">
-              Patient log in
+              Client log in
             </Link>
             {" · "}
             <Link href="/therapist/login" className="underline">
@@ -129,6 +130,6 @@ export default function AdminLoginPage() {
           </p>
         </CardContent>
       </Card>
-    </main>
+    </AuthChrome>
   );
 }

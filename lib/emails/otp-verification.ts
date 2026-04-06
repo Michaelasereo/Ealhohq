@@ -1,3 +1,5 @@
+import { emailMarkLogoImg } from "@/lib/emails/partials";
+
 export interface OTPEmailParams {
   recipientEmail: string;
   recipientName: string;
@@ -38,15 +40,12 @@ export function buildOTPEmail(params: OTPEmailParams) {
           style="background:#ffffff;border-radius:12px;
           overflow:hidden;max-width:480px;width:100%;">
           
-          <!-- Header -->
+          <!-- Header: mark-only logo (no wordmark) -->
           <tr>
-            <td style="background:#292612;padding:32px;text-align:center;">
-              <h1 style="margin:0;color:#d6eae1;font-size:24px;
-                font-weight:700;letter-spacing:-0.5px;">
-                ealho
-              </h1>
-              <p style="margin:4px 0 0;color:#b8ccc4;font-size:13px;">
-                Nigeria's first therapy platform for clinicians
+            <td style="padding:28px 32px 20px;text-align:center;background:#ffffff;border-bottom:1px solid #e8e6dd;">
+              ${emailMarkLogoImg({ maxHeightPx: 48, align: "center" })}
+              <p style="margin:12px 0 0;color:#474433;font-size:13px;line-height:1.4;">
+                Nigeria&apos;s first therapy platform for clinicians
               </p>
             </td>
           </tr>

@@ -1,10 +1,14 @@
 import { BookTherapistClient } from "@/components/booking/BookTherapistClient";
+import { CaptureReferralFromUrl } from "@/components/referral/CaptureReferralFromUrl";
 
 export default function PatientTherapistBookPage() {
   return (
-    <BookTherapistClient
-      confirmHref="/dashboard/book/confirm"
-      usePatient
-    />
+    <>
+      <CaptureReferralFromUrl />
+      <BookTherapistClient
+        confirmHref="/dashboard/book/confirm"
+        usePatient
+      />
+    </>
   );
 }

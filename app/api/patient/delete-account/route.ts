@@ -28,7 +28,7 @@ export async function POST(req: Request) {
     const patient = await getPatientByProfileId(user.id);
     if (!patient) {
       return NextResponse.json(
-        { error: "Patient profile not found" },
+        { error: "Client profile not found" },
         { status: 404 },
       );
     }
@@ -80,7 +80,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ success: true });
   } catch (e) {
-    console.error("patient delete-account:", e);
+    console.error("client delete-account:", e);
     return NextResponse.json(
       { error: "Failed to delete account" },
       { status: 500 },

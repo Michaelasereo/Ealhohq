@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { getPatientByProfileId } from "@/lib/queries/patient";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma/client";
+import { therapistPublicLabel } from "@/lib/therapist-display-name";
 import { bookingDateStartToIso } from "@/lib/wat-datetime";
 
 export async function GET(req: Request) {
@@ -69,9 +70,13 @@ export async function GET(req: Request) {
     });
 
     const filtered = search
-      ? rows.filter((b) =>
-          b.therapist.profile.fullName.toLowerCase().includes(search),
-        )
+      ? rows.filter((b) => {
+          const raw = b.therapist.profile.fullName.toLowerCase();
+          const pub = therapistPublicLabel(
+            b.therapist.profile.fullName,
+          ).toLowerCase();
+          return raw.includes(search) || pub.includes(search);
+        })
       : rows;
 
     const start = (page - 1) * limit;
@@ -95,7 +100,7 @@ export async function GET(req: Request) {
       sessionType: b.sessionType,
       therapist: {
         id: b.therapist.id,
-        name: b.therapist.profile.fullName,
+        name: therapistPublicLabel(b.therapist.profile.fullName),
       },
       sessionNumber: b.session?.sessionNumber ?? null,
       durationMins:
@@ -115,7 +120,7 @@ export async function GET(req: Request) {
       },
     });
   } catch (e) {
-    console.error("patient/history GET:", e);
+    console.error("client history GET:", e);
     return NextResponse.json(
       { error: "Failed to load history" },
       { status: 500 },

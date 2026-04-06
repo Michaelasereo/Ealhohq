@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { getAvailableSlots } from "@/lib/availability/slots";
+import { ensureRegisteredPatientForUser } from "@/lib/queries/patient";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma/client";
 import { watDayStart } from "@/lib/wat-datetime";
@@ -23,7 +24,9 @@ export async function POST(req: Request) {
       consentTimestamp,
       patientId: bodyPatientId,
       guestBookingReason,
+      professionalType: rawProfessionalType,
       isAnonymous: rawAnonymous,
+      referralCode: rawReferralCode,
     } = body as Record<string, unknown>;
 
     const isAnonymous = Boolean(rawAnonymous);
@@ -61,12 +64,20 @@ export async function POST(req: Request) {
       data: { user },
     } = await supabase.auth.getUser();
 
+    const gNameRaw = typeof guestName === "string" ? guestName.trim() : "";
+    const gEmail = typeof guestEmail === "string" ? guestEmail.trim() : "";
+    const gPhone =
+      typeof guestPhone === "string" ? guestPhone.trim() : "";
+    const referralCodeInput =
+      typeof rawReferralCode === "string" ? rawReferralCode.trim().toUpperCase() : "";
+
     const isRegisteredBooking =
       typeof bodyPatientId === "string" && bodyPatientId.length > 0;
 
     let resolvedPatientId: string | null = isRegisteredBooking
       ? bodyPatientId
       : null;
+    let registeredViaAuth = false;
 
     if (resolvedPatientId) {
       if (!user) {
@@ -88,19 +99,30 @@ export async function POST(req: Request) {
           {
             success: false,
             data: null,
-            error: "Patient profile mismatch",
+            error: "Client profile mismatch",
             meta: { timestamp: new Date().toISOString() },
           },
           { status: 403 },
         );
       }
+    } else if (user && !gNameRaw) {
+      const patient = await ensureRegisteredPatientForUser(user);
+      if (!patient) {
+        return NextResponse.json(
+          {
+            success: false,
+            data: null,
+            error:
+              "Client profile not found. Complete your profile or book as a guest.",
+            meta: { timestamp: new Date().toISOString() },
+          },
+          { status: 403 },
+        );
+      }
+      resolvedPatientId = patient.id;
+      registeredViaAuth = true;
     } else {
-      const gName = typeof guestName === "string" ? guestName.trim() : "";
-      const gEmail = typeof guestEmail === "string" ? guestEmail.trim() : "";
-      const gPhone =
-        typeof guestPhone === "string" ? guestPhone.trim() : "";
-
-      if (!gName || !gEmail) {
+      if (!gNameRaw || !gEmail) {
         return NextResponse.json(
           {
             success: false,
@@ -177,34 +199,86 @@ export async function POST(req: Request) {
       resolvedPatientId = guest.id;
     }
 
-    const st =
+    const isRegisteredPatient = isRegisteredBooking || registeredViaAuth;
+    const trimmedGuestName = String(guestName ?? "").trim();
+    const trimmedGuestEmail = String(guestEmail ?? "").trim();
+    const trimmedGuestPhone =
+      typeof guestPhone === "string" ? guestPhone.trim() : "";
+
+    const patientForReferral = await prisma.therapyPatient.findUnique({
+      where: { id: resolvedPatientId },
+      select: { email: true },
+    });
+    const referralPatientEmail = (
+      isRegisteredPatient ? patientForReferral?.email : trimmedGuestEmail
+    )?.toLowerCase() ?? "";
+
+    let referralAttach: {
+      referralCode: string;
+      referralPartnerId: string;
+      isReferral: true;
+    } | null = null;
+    if (referralCodeInput && referralPatientEmail) {
+      const partner = await prisma.referralPartner.findFirst({
+        where: { referralCode: referralCodeInput, isActive: true },
+      });
+      if (partner) {
+        const alreadyReferred = await prisma.referralSession.findFirst({
+          where: {
+            partnerId: partner.id,
+            patientEmail: referralPatientEmail,
+            status: { not: "voided" },
+          },
+        });
+        if (!alreadyReferred) {
+          referralAttach = {
+            referralCode: partner.referralCode,
+            referralPartnerId: partner.id,
+            isReferral: true,
+          };
+        }
+      }
+    }
+
+    let st =
       sessionType === "intake" || sessionType === "followup"
         ? sessionType
         : "followup";
+    if (isRegisteredPatient) {
+      const completedWithTherapist = await prisma.therapySession.count({
+        where: {
+          therapistId,
+          patientId: resolvedPatientId!,
+          status: "completed",
+        },
+      });
+      st = completedWithTherapist === 0 ? "intake" : "followup";
+    }
 
     const reasonStr =
       typeof guestBookingReason === "string" && guestBookingReason.trim()
         ? guestBookingReason.trim().slice(0, 500)
         : null;
 
-    const trimmedGuestName = String(guestName ?? "").trim();
-    const trimmedGuestEmail = String(guestEmail ?? "").trim();
-    const trimmedGuestPhone =
-      typeof guestPhone === "string" ? guestPhone.trim() : "";
+    const professionalTypeStr =
+      typeof rawProfessionalType === "string" && rawProfessionalType.trim()
+        ? rawProfessionalType.trim().slice(0, 300)
+        : null;
 
     const booking = await prisma.therapyBooking.create({
       data: {
         therapistId,
         patientId: resolvedPatientId,
-        guestName: isRegisteredBooking ? null : trimmedGuestName,
-        guestEmail: isRegisteredBooking ? null : trimmedGuestEmail,
-        guestPhone: isRegisteredBooking
+        guestName: isRegisteredPatient ? null : trimmedGuestName,
+        guestEmail: isRegisteredPatient ? null : trimmedGuestEmail,
+        guestPhone: isRegisteredPatient
           ? null
           : trimmedGuestPhone || null,
-        guestBookingReason: isRegisteredBooking ? null : reasonStr,
-        isAnonymous: isRegisteredBooking ? false : isAnonymous,
+        guestBookingReason: reasonStr,
+        professionalType: professionalTypeStr,
+        isAnonymous: isRegisteredPatient ? false : isAnonymous,
         clientAlias:
-          isRegisteredBooking || !isAnonymous
+          isRegisteredPatient || !isAnonymous
             ? null
             : trimmedGuestName || null,
         date: watDayStart(date),
@@ -217,6 +291,7 @@ export async function POST(req: Request) {
           : null,
         status: "pending",
         paymentStatus: "pending",
+        ...(referralAttach ?? {}),
       },
     });
 

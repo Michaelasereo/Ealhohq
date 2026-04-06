@@ -1,4 +1,5 @@
 import { firstName, normalizeNgDigits } from "@/lib/rebooking/phone";
+import { therapistPublicLabel } from "@/lib/therapist-display-name";
 import { sendWhatsAppText } from "@/lib/reminders/send-whatsapp";
 
 export function chatAppBaseUrl(): string {
@@ -24,11 +25,10 @@ Open Ealho to reply:
 ${base}/therapist/messages?thread=${opts.threadId}`,
     });
   } else {
-    const name = opts.otherPartyFullName.trim();
-    const dr = name.match(/^dr\.?\s/i) ? name : `Dr. ${name}`;
+    const label = therapistPublicLabel(opts.otherPartyFullName);
     await sendWhatsAppText({
       toE164Digits: phone,
-      body: `💬 ${dr} sent you a message
+      body: `💬 ${label} sent you a message
 ${base}/messages?thread=${opts.threadId}`,
     });
   }

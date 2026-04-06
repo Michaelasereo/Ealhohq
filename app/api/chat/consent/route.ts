@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { resolveAppRole } from "@/lib/auth/resolve-app-role";
 import { patientHasFullChatConsent } from "@/lib/chat/consent";
 import { ensureRegisteredPatientForUser } from "@/lib/queries/patient";
 import { prisma } from "@/lib/prisma/client";
@@ -47,9 +48,15 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const role = user.app_metadata?.role as string | undefined;
+    const role = await resolveAppRole(user.id);
     if (role !== "patient") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      return NextResponse.json(
+        {
+          error:
+            "Only client accounts can accept messaging consent. If you use a therapist or admin login, open Messages from that dashboard instead.",
+        },
+        { status: 403 },
+      );
     }
 
     const raw = await req.json();
@@ -64,7 +71,10 @@ export async function POST(req: Request) {
     const patient = await ensureRegisteredPatientForUser(user);
     if (!patient) {
       return NextResponse.json(
-        { error: "Patient profile required" },
+        {
+          error:
+            "We couldn’t find your client profile. Complete signup or open your profile once, then try again.",
+        },
         { status: 403 },
       );
     }

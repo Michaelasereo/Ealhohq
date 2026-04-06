@@ -128,8 +128,7 @@ export function SignInForm({
   };
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-[375px] flex-col justify-center px-4 py-8">
-      <Card className="w-full border-border shadow-md">
+    <Card className="w-full border-border bg-white shadow-md">
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl">{title}</CardTitle>
           <CardDescription>{description}</CardDescription>
@@ -187,6 +186,5 @@ export function SignInForm({
           {footer != null ? <div className="mt-6">{footer}</div> : null}
         </CardContent>
       </Card>
-    </main>
   );
 }

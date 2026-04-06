@@ -1,12 +1,13 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Calendar, Check, Clock, Shield } from "lucide-react";
+import { ArrowLeft, Calendar, Check, Clock, Shield, X } from "lucide-react";
 import Image from "next/image";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import type { BookingData } from "@/components/booking/BookingModal";
 import { formatSlotTo12h, formatWatLongDate } from "@/lib/booking/display-wat";
+import { clearReferralCode, getReferralCode } from "@/lib/referral/client";
 
 function buildGuestBookingReason(reason: string, category: string): string | undefined {
   const r = reason.trim();
@@ -55,6 +56,38 @@ export function BookingStep3({ data, onUpdate, onBack }: Props) {
   const [aiConsentAccepted, setAiConsentAccepted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [discountCode, setDiscountCode] = useState("");
+  const [discountResult, setDiscountResult] = useState<{
+    discountAmount: number;
+    finalAmount: number;
+    isFree: boolean;
+    discountType: string;
+  } | null>(null);
+  const [discountError, setDiscountError] = useState("");
+  const [isValidating, setIsValidating] = useState(false);
+  const [validationSeconds, setValidationSeconds] = useState(0);
+  const validationTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    if (isValidating) {
+      setValidationSeconds(0);
+      validationTimerRef.current = setInterval(() => {
+        setValidationSeconds((prev) => prev + 1);
+      }, 1000);
+    } else {
+      if (validationTimerRef.current != null) {
+        clearInterval(validationTimerRef.current);
+        validationTimerRef.current = null;
+      }
+      setValidationSeconds(0);
+    }
+    return () => {
+      if (validationTimerRef.current != null) {
+        clearInterval(validationTimerRef.current);
+        validationTimerRef.current = null;
+      }
+    };
+  }, [isValidating]);
 
   const availableDates = nextFourteenDaysYmd();
 
@@ -71,6 +104,39 @@ export function BookingStep3({ data, onUpdate, onBack }: Props) {
     enabled: Boolean(selectedDate && data.therapistId),
   });
 
+  async function handleApplyCode() {
+    const c = discountCode.trim();
+    if (!c) return;
+    setIsValidating(true);
+    setDiscountError("");
+    try {
+      const r = await fetch("/api/discount/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: c, amount: data.therapistRate }),
+      });
+      const j = (await r.json()) as {
+        success?: boolean;
+        data?: {
+          discountAmount: number;
+          finalAmount: number;
+          isFree: boolean;
+          discountType: string;
+        };
+        error?: string;
+      };
+      if (!r.ok || !j.success || !j.data) {
+        throw new Error(j.error ?? "Invalid code");
+      }
+      setDiscountResult(j.data);
+    } catch (e) {
+      setDiscountResult(null);
+      setDiscountError(e instanceof Error ? e.message : "Invalid code");
+    } finally {
+      setIsValidating(false);
+    }
+  }
+
   async function handleProceedToPayment() {
     if (!selectedDate || !selectedSlot) return;
     if (!termsAccepted || !aiConsentAccepted) return;
@@ -80,6 +146,7 @@ export function BookingStep3({ data, onUpdate, onBack }: Props) {
 
     const guestName = data.isAnonymous ? data.alias.trim() : data.fullName.trim();
     const guestBookingReason = buildGuestBookingReason(data.reason, data.reasonCategory);
+    const referralCode = getReferralCode();
 
     try {
       const createRes = await fetch("/api/booking/create", {
@@ -97,6 +164,8 @@ export function BookingStep3({ data, onUpdate, onBack }: Props) {
           guestEmail: data.email.trim(),
           guestPhone: data.phone.trim(),
           guestBookingReason,
+          professionalType: data.professionalType.trim() || undefined,
+          referralCode: referralCode ?? undefined,
         }),
       });
       const createJson = (await createRes.json()) as {
@@ -125,6 +194,7 @@ export function BookingStep3({ data, onUpdate, onBack }: Props) {
         body: JSON.stringify({
           bookingId,
           email: data.email.trim(),
+          discountCode: discountResult ? discountCode.trim().toUpperCase() : undefined,
           metadata: {
             booking_reason: guestBookingReason ?? "",
           },
@@ -132,13 +202,26 @@ export function BookingStep3({ data, onUpdate, onBack }: Props) {
       });
       const initJson = (await initRes.json()) as {
         success?: boolean;
-        data?: { authorization_url?: string };
+        data?: {
+          authorization_url?: string;
+          isFree?: boolean;
+          bookingId?: string;
+        };
         error?: string;
       };
-      if (!initRes.ok || !initJson.success || !initJson.data?.authorization_url) {
+      if (!initRes.ok || !initJson.success || !initJson.data) {
+        throw new Error(initJson.error ?? "Could not start payment");
+      }
+      if (initJson.data.isFree && initJson.data.bookingId) {
+        clearReferralCode();
+        window.location.href = `/book/success?bookingId=${encodeURIComponent(initJson.data.bookingId)}`;
+        return;
+      }
+      if (!initJson.data.authorization_url) {
         throw new Error(initJson.error ?? "Could not start payment");
       }
 
+      clearReferralCode();
       window.location.href = initJson.data.authorization_url;
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
@@ -286,9 +369,118 @@ export function BookingStep3({ data, onUpdate, onBack }: Props) {
           <div className="flex justify-between border-t border-gray-200 pt-2">
             <span className="text-sm font-semibold text-gray-900">Total</span>
             <span className="text-sm font-bold text-gray-900">
-              ₦{data.therapistRate.toLocaleString()}
+              {discountResult ? (
+                <>
+                  <span className="mr-2 text-gray-400 line-through">
+                    ₦{data.therapistRate.toLocaleString()}
+                  </span>
+                  <span
+                    className={
+                      discountResult.isFree ? "text-primary" : "text-gray-900"
+                    }
+                  >
+                    {discountResult.isFree
+                      ? "FREE"
+                      : `₦${discountResult.finalAmount.toLocaleString()}`}
+                  </span>
+                </>
+              ) : (
+                `₦${data.therapistRate.toLocaleString()}`
+              )}
             </span>
           </div>
+        </div>
+      ) : null}
+
+      {selectedSlot ? (
+        <div className="space-y-2">
+          <p className="text-xs font-semibold text-gray-700">Discount code</p>
+          {discountResult ? (
+            <div className="flex items-center justify-between rounded-xl border border-green-200 bg-green-50 px-4 py-3">
+              <div className="flex min-w-0 items-center gap-2">
+                <Check
+                  size={14}
+                  strokeWidth={2.5}
+                  className="shrink-0 text-green-600"
+                />
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-green-800">
+                    {discountCode} applied
+                  </p>
+                  <p className="text-xs text-green-600">
+                    {discountResult.isFree
+                      ? "Session is completely free!"
+                      : `₦${discountResult.discountAmount.toLocaleString()} discount applied`}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setDiscountResult(null);
+                  setDiscountCode("");
+                  setDiscountError("");
+                }}
+                className="ml-3 shrink-0 text-xs text-green-600 underline hover:text-green-800"
+              >
+                Remove
+              </button>
+            </div>
+          ) : (
+            <>
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <input
+                    value={discountCode}
+                    onChange={(e) => {
+                      setDiscountCode(e.target.value.toUpperCase());
+                      setDiscountResult(null);
+                      setDiscountError("");
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        void handleApplyCode();
+                      }
+                    }}
+                    placeholder="Discount code"
+                    className="w-full rounded-xl border border-gray-200 px-4 py-2.5 pr-10 text-sm uppercase tracking-widest transition-colors focus:border-[#2C3B2D] focus:outline-none"
+                  />
+                  {isValidating ? (
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                      <div className="size-4 animate-spin rounded-full border-2 border-[#2C3B2D]/30 border-t-[#2C3B2D]" />
+                    </div>
+                  ) : null}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => void handleApplyCode()}
+                  disabled={!discountCode.trim() || isValidating}
+                  className="flex min-w-[72px] shrink-0 items-center justify-center gap-2 rounded-xl bg-gray-100 px-4 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-200 disabled:opacity-50"
+                >
+                  {isValidating ? (
+                    <>
+                      <div className="size-3.5 animate-spin rounded-full border-2 border-gray-400 border-t-transparent" />
+                      <span>Checking</span>
+                    </>
+                  ) : (
+                    "Apply"
+                  )}
+                </button>
+              </div>
+              {isValidating && validationSeconds >= 2 ? (
+                <p className="mt-1 text-xs text-gray-400">
+                  Checking code... ({validationSeconds}s)
+                </p>
+              ) : null}
+            </>
+          )}
+          {discountError && !discountResult ? (
+            <div className="flex items-center gap-2 rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-xs text-red-600">
+              <X size={12} strokeWidth={2} className="shrink-0" />
+              <span>{discountError}</span>
+            </div>
+          ) : null}
         </div>
       ) : null}
 
@@ -347,25 +539,48 @@ export function BookingStep3({ data, onUpdate, onBack }: Props) {
         <p className="rounded-lg bg-red-50 p-3 text-sm text-red-500">{error}</p>
       ) : null}
 
-      <div className="flex gap-3">
-        <button
-          type="button"
-          onClick={onBack}
-          className="flex shrink-0 items-center gap-1.5 rounded-xl border border-gray-200 px-4 py-3 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50"
-        >
-          <ArrowLeft size={14} strokeWidth={1.5} />
-          Back
-        </button>
-        <button
-          type="button"
-          onClick={handleProceedToPayment}
-          disabled={!canProceed || isSubmitting}
-          className="flex-1 rounded-xl bg-primary py-3 font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          {isSubmitting
-            ? "Processing..."
-            : `Pay ₦${data.therapistRate.toLocaleString()} →`}
-        </button>
+      <div className="flex flex-col gap-3">
+        <div className="flex gap-3">
+          <button
+            type="button"
+            onClick={onBack}
+            className="flex shrink-0 items-center gap-1.5 rounded-xl border border-gray-200 px-4 py-3 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50"
+          >
+            <ArrowLeft size={14} strokeWidth={1.5} />
+            Back
+          </button>
+          <button
+            type="button"
+            onClick={handleProceedToPayment}
+            disabled={!canProceed || isSubmitting}
+            className={`flex flex-1 items-center justify-center rounded-xl py-3 font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+              discountResult?.isFree
+                ? "bg-green-600 text-white hover:bg-green-700"
+                : "bg-[#2C3B2D] text-white hover:bg-[#3a4d3b]"
+            }`}
+          >
+            {isSubmitting ? (
+              <span className="flex items-center justify-center gap-2">
+                <div className="size-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+                Processing...
+              </span>
+            ) : discountResult?.isFree ? (
+              "✓ Confirm Free Booking →"
+            ) : (
+              `Pay ₦${(discountResult?.finalAmount ?? data.therapistRate).toLocaleString()} →`
+            )}
+          </button>
+        </div>
+        {isSubmitting ? (
+          <div className="space-y-1 text-center">
+            <p className="animate-pulse text-xs text-gray-500">
+              {discountResult?.isFree
+                ? "Confirming your free booking..."
+                : "Redirecting to secure payment..."}
+            </p>
+            <p className="text-xs text-gray-400">Please do not close this window</p>
+          </div>
+        ) : null}
       </div>
     </div>
   );

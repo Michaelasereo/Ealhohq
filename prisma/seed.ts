@@ -128,7 +128,7 @@ async function main() {
     "therapist1@ealhohq.com",
     "TestTherapist123!",
     "therapist",
-    "Dr. Amaka Obi",
+    "Amaka Obi",
     "approved",
   );
   const t1Profile = await prisma.sharedProfile.upsert({
@@ -137,7 +137,7 @@ async function main() {
     create: {
       id: t1User.id,
       role: "therapist",
-      fullName: "Dr. Amaka Obi",
+      fullName: "Amaka Obi",
       status: "pending",
     },
   });
@@ -150,7 +150,7 @@ async function main() {
       specializations: ["Anxiety", "Depression", "Stress Management"],
       qualifications: ["MSc Clinical Psychology", "CBT Certified"],
       status: "approved",
-      sessionRate: 15000,
+      sessionRate: 20000,
       sessionDuration: 50,
     },
   });
@@ -174,7 +174,7 @@ async function main() {
     "therapist2@ealhohq.com",
     "TestTherapist123!",
     "therapist",
-    "Dr. Chidi Nwosu",
+    "Chidi Nwosu",
     "approved",
   );
   const t2Profile = await prisma.sharedProfile.upsert({
@@ -183,7 +183,7 @@ async function main() {
     create: {
       id: t2User.id,
       role: "therapist",
-      fullName: "Dr. Chidi Nwosu",
+      fullName: "Chidi Nwosu",
       status: "pending",
     },
   });
@@ -196,7 +196,7 @@ async function main() {
       specializations: ["Trauma", "PTSD", "Grief"],
       qualifications: ["PhD Psychology", "EMDR Certified"],
       status: "approved",
-      sessionRate: 15000,
+      sessionRate: 20000,
       sessionDuration: 50,
     },
   });
@@ -248,7 +248,48 @@ async function main() {
     update: { balance: 2, tier: "bronze" },
     create: { patientId: patient.id, balance: 2, tier: "bronze" },
   });
-  console.log("✅ Patient ready");
+  console.log("✅ Client test account ready");
+
+  // Dev / QA discount codes (initialize route validates the same rules as production)
+  await prisma.discountCode.upsert({
+    where: { code: "EALHO100" },
+    update: {
+      isActive: true,
+      discountType: "full",
+      discountValue: new Prisma.Decimal(0),
+      maxUses: null,
+      expiresAt: null,
+    },
+    create: {
+      code: "EALHO100",
+      discountType: "full",
+      discountValue: new Prisma.Decimal(0),
+      maxUses: null,
+      expiresAt: null,
+      isActive: true,
+      createdBy: adminUser.id,
+    },
+  });
+  await prisma.discountCode.upsert({
+    where: { code: "EALHO10" },
+    update: {
+      isActive: true,
+      discountType: "percentage",
+      discountValue: new Prisma.Decimal(10),
+      maxUses: null,
+      expiresAt: null,
+    },
+    create: {
+      code: "EALHO10",
+      discountType: "percentage",
+      discountValue: new Prisma.Decimal(10),
+      maxUses: null,
+      expiresAt: null,
+      isActive: true,
+      createdBy: adminUser.id,
+    },
+  });
+  console.log("✅ Sample discount codes: EALHO100 (100% / free), EALHO10 (10%)");
 
   console.log("✅ Seed complete");
 }

@@ -5,6 +5,7 @@ import { enrichSlotsForQuickRebook } from "@/lib/booking/quick-rebook-display";
 import { getPatientByProfileId } from "@/lib/queries/patient";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma/client";
+import { therapistPublicLabel } from "@/lib/therapist-display-name";
 import { addWatDays, watTodayDateString } from "@/lib/wat-datetime";
 
 export async function GET() {
@@ -71,7 +72,7 @@ export async function GET() {
       data: {
         therapist: {
           id: t.id,
-          name: t.profile.fullName,
+          name: therapistPublicLabel(t.profile.fullName),
           photo: t.profilePhoto ?? "/Ealho-logo.png",
           sessionRate: Math.round(Number(t.sessionRate)),
           sessionDuration: t.sessionDuration,
@@ -81,7 +82,7 @@ export async function GET() {
       },
     });
   } catch (e) {
-    console.error("patient/last-therapist GET:", e);
+    console.error("client last-therapist GET:", e);
     return NextResponse.json(
       { success: false, error: "Failed to load" },
       { status: 500 },

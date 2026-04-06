@@ -25,12 +25,46 @@ const KEYWORD_MAP: Record<string, string[]> = {
   "Work or burnout": ["burnout", "work", "career", "overwhelm", "exhausted"],
 };
 
+function matchBurnoutStressTherapist(therapists: TherapistRow[]): TherapistRow | null {
+  return (
+    therapists.find((t) =>
+      (t.specializations ?? []).some((s) =>
+        ["burnout", "stress", "anxiety", "work"].some((kw) =>
+          s.toLowerCase().includes(kw),
+        ),
+      ),
+    ) ?? null
+  );
+}
+
 function autoMatchTherapist(
   reason: string,
   category: string,
+  professionalType: string,
   therapists: TherapistRow[],
 ): TherapistRow | null {
   if (!therapists.length) return null;
+
+  const pt = (professionalType ?? "").trim();
+  const isIntern =
+    pt.includes("Intern") ||
+    pt.includes("House Officer") ||
+    pt.includes("Resident");
+  const isSenior =
+    pt.includes("Consultant") ||
+    pt.includes("Professor") ||
+    pt.includes("Matron");
+  const isMedStudent = pt.includes("Student");
+
+  if (isIntern || isMedStudent) {
+    const match = matchBurnoutStressTherapist(therapists);
+    if (match) return match;
+  }
+
+  if (isSenior) {
+    const match = matchBurnoutStressTherapist(therapists);
+    if (match) return match;
+  }
 
   const text = `${reason} ${category}`.toLowerCase();
 
@@ -92,7 +126,12 @@ export function BookingStep2({ data, onUpdate, onNext, onBack }: Props) {
 
   function handleAutoMatch() {
     const list = therapists ?? [];
-    const match = autoMatchTherapist(data.reason, data.reasonCategory, list);
+    const match = autoMatchTherapist(
+      data.reason,
+      data.reasonCategory,
+      data.professionalType,
+      list,
+    );
     if (match) {
       setMatchedTherapist(match);
       setAutoMatched(true);

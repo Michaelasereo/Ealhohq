@@ -3,6 +3,7 @@ import { durationMinutesFromSlot, formatDurationLabel } from "@/lib/emails/utils
 import { signupUrlWithEmail } from "@/lib/reminders/booking-confirmation-copy";
 import { getBookingRecipientEmail } from "@/lib/emails/booking-recipient";
 import { sessionJoinUrl } from "@/lib/reminders/format-session-link";
+import { therapistPublicLabel } from "@/lib/therapist-display-name";
 import { bookingDateStartToIso, formatWAT } from "@/lib/wat-datetime";
 
 export function buildBookingEmailLayoutParams(booking: {
@@ -24,7 +25,7 @@ export function buildBookingEmailLayoutParams(booking: {
   const mins = durationMinutesFromSlot(booking.startTime, booking.endTime);
   const to = getBookingRecipientEmail(booking);
   return {
-    therapistName: booking.therapist.profile.fullName,
+    therapistName: therapistPublicLabel(booking.therapist.profile.fullName),
     dateTimeLine: dateLine,
     timeWat,
     durationLabel: formatDurationLabel(mins),

@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma/client";
 import { sessionJoinUrl } from "@/lib/reminders/format-session-link";
 import { sendBookingConfirmationEmail } from "@/lib/reminders/send-email";
 import { sendWhatsAppText } from "@/lib/reminders/send-whatsapp";
+import { therapistPublicLabel } from "@/lib/therapist-display-name";
 import { bookingDateStartToIso, formatWAT } from "@/lib/wat-datetime";
 
 type BookingWith = Prisma.TherapyBookingGetPayload<{
@@ -24,7 +25,7 @@ export async function notifyRebookBookingConfirmed(
   const startIso = bookingDateStartToIso(booking.date, booking.startTime);
   const timeWat = formatWAT(startIso);
   const pFirst = firstName(booking.patient?.fullName ?? "there");
-  const tName = booking.therapist.profile.fullName;
+  const tName = therapistPublicLabel(booking.therapist.profile.fullName);
 
   const patientPhone = normalizeNgDigits(booking.patient?.phone ?? null);
   if (patientPhone) {
@@ -33,7 +34,7 @@ export async function notifyRebookBookingConfirmed(
       body: `Hi ${pFirst}! Your session is confirmed.
 
 📅 ${timeWat} WAT
-👨‍⚕️ ${tName}
+${tName}
 
 Join here: ${join}`,
     });
@@ -45,7 +46,7 @@ Join here: ${join}`,
   if (therapistPhone) {
     await sendWhatsAppText({
       toE164Digits: therapistPhone,
-      body: `✅ ${booking.patient?.fullName ?? "Your patient"} has confirmed their session
+      body: `✅ ${booking.patient?.fullName ?? "Your client"} has confirmed their session
 📅 ${timeWat} WAT`,
     });
   }

@@ -203,7 +203,7 @@ export default function TherapistClientProfilePage() {
             disabled={openChatMut.isPending}
             onClick={() => openChatMut.mutate(patient.id)}
           >
-            Message patient
+            Message client
           </Button>
           <Button
             type="button"

@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 
 import { isAdminUser } from "@/lib/auth/is-admin";
+import {
+  DEFAULT_PLATFORM_PERCENT,
+  DEFAULT_THERAPIST_PERCENT,
+} from "@/lib/defaults/earnings-split";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { prisma } from "@/lib/prisma/client";
@@ -23,10 +27,32 @@ export async function GET(req: Request) {
         ? {}
         : { status: statusFilter };
 
+    const sessionAgg = await prisma.therapySession.groupBy({
+      by: ["therapistId"],
+      where: {
+        status: "completed",
+        booking: { paymentStatus: "paid" },
+      },
+      _sum: { therapistEarnings: true },
+      _count: { _all: true },
+    });
+    const aggByTherapist = new Map(
+      sessionAgg.map((r) => [
+        r.therapistId,
+        {
+          totalTherapistEarnings: r._sum.therapistEarnings
+            ? Number(r._sum.therapistEarnings)
+            : 0,
+          paidCompletedSessions: r._count._all,
+        },
+      ]),
+    );
+
     const therapists = await prisma.therapyTherapist.findMany({
       where,
       include: {
         profile: true,
+        earningsConfig: true,
         _count: { select: { sessions: true, bookings: true } },
       },
       orderBy: { createdAt: "desc" },
@@ -38,10 +64,22 @@ export async function GET(req: Request) {
         const { data: authUser } = await adminSb.auth.admin.getUserById(
           t.profileId,
         );
+        const cfg = t.earningsConfig;
+        const therapistPercent = cfg
+          ? Number(cfg.therapistPercent)
+          : DEFAULT_THERAPIST_PERCENT;
+        const platformPercent = cfg
+          ? Number(cfg.platformPercent)
+          : DEFAULT_PLATFORM_PERCENT;
+        const agg = aggByTherapist.get(t.id);
         return {
           ...t,
           sessionRate: Number(t.sessionRate),
           email: authUser.user?.email ?? null,
+          therapistPercent,
+          platformPercent,
+          totalTherapistEarnings: agg?.totalTherapistEarnings ?? 0,
+          paidCompletedSessions: agg?.paidCompletedSessions ?? 0,
         };
       }),
     );

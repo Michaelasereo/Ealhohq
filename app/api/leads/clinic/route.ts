@@ -9,6 +9,7 @@ import {
 } from "@/lib/leads/clinic-lead-labels";
 import { clinicLeadSchema } from "@/lib/leads/clinic-lead-schema";
 import { prisma } from "@/lib/prisma/client";
+import { emailMarkLogoImg } from "@/lib/emails/partials";
 import { sendTransactionalEmail } from "@/lib/reminders/send-email";
 
 function escapeHtml(s: string): string {
@@ -63,7 +64,8 @@ export async function POST(req: Request) {
 
     const html = `
         <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto; padding: 24px;">
-          <h2 style="color: #292612; margin-bottom: 16px;">New clinic lead</h2>
+          ${emailMarkLogoImg({ maxHeightPx: 40, align: "left" })}
+          <h2 style="color: #292612; margin: 20px 0 16px;">New clinic lead</h2>
           <table style="width: 100%; border-collapse: collapse;">
             ${[
               ["Name", body.fullName],
@@ -119,7 +121,7 @@ export async function POST(req: Request) {
           {
             success: false,
             error:
-              "Lead capture is not set up on this environment yet. Please email hello@ealho.com or ask your team to run database migrations.",
+              "Lead capture is not set up on this database yet. Run: npx prisma migrate deploy (or ask your team). You can still email hello@ealho.com.",
             code: error.code,
             meta: { timestamp: new Date().toISOString() },
           },

@@ -4,6 +4,7 @@ import { isAdminUser } from "@/lib/auth/is-admin";
 import { findSlaBreachThreads } from "@/lib/chat/admin-sla-cron";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma/client";
+import { therapistPublicLabel } from "@/lib/therapist-display-name";
 import { watDayStart, watTodayDateString } from "@/lib/wat-datetime";
 
 export const runtime = "nodejs";
@@ -116,7 +117,7 @@ export async function GET() {
             },
           });
     const nameById = new Map(
-      therapists.map((t) => [t.id, t.profile.fullName]),
+      therapists.map((t) => [t.id, therapistPublicLabel(t.profile.fullName)]),
     );
 
     const therapistResponseStats = therapistIdList.map((therapistId) => ({

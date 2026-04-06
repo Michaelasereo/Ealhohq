@@ -113,6 +113,7 @@ export async function GET(_req: Request, ctx: Ctx) {
           id: guest.id,
           isAnonymous,
           clientId: getClientId(guest.id),
+          professionalType: guest.professionalType,
         },
       },
       error: null,

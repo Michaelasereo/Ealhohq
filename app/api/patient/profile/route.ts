@@ -45,7 +45,7 @@ export async function GET() {
       },
     });
   } catch (e) {
-    console.error("patient/profile GET:", e);
+    console.error("client profile GET:", e);
     return NextResponse.json(
       { error: "Failed to load profile" },
       { status: 500 },
@@ -139,7 +139,7 @@ export async function PUT(req: Request) {
 
     return NextResponse.json({ success: true });
   } catch (e) {
-    console.error("patient/profile PUT:", e);
+    console.error("client profile PUT:", e);
     return NextResponse.json(
       { error: "Failed to save profile" },
       { status: 500 },

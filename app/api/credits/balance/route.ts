@@ -32,7 +32,7 @@ export async function GET() {
       take: 20,
     });
 
-    const balance = credit?.balance ?? 0;
+    const balance = Number(credit?.balance ?? 0);
 
     return NextResponse.json({
       success: true,

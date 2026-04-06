@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { isAdminUser } from "@/lib/auth/is-admin";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma/client";
+import { therapistPublicLabel } from "@/lib/therapist-display-name";
 
 export const runtime = "nodejs";
 
@@ -108,7 +109,7 @@ export async function GET(req: Request) {
         patient: { id: t.patient.id, displayName: t.patient.fullName },
         therapist: {
           id: t.therapist.id,
-          displayName: t.therapist.profile.fullName,
+          displayName: therapistPublicLabel(t.therapist.profile.fullName),
         },
         lastMessage: last
           ? {

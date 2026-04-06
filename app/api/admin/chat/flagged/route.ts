@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { isAdminUser } from "@/lib/auth/is-admin";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma/client";
+import { therapistPublicLabel } from "@/lib/therapist-display-name";
 
 export const runtime = "nodejs";
 
@@ -72,7 +73,9 @@ export async function GET(req: Request) {
           highRiskEscalatedAt: m.highRiskEscalatedAt?.toISOString() ?? null,
           threadStatus: m.thread.status,
           patientName: m.thread.patient.fullName,
-          therapistName: m.thread.therapist.profile.fullName,
+          therapistName: therapistPublicLabel(
+            m.thread.therapist.profile.fullName,
+          ),
         })),
       },
     });

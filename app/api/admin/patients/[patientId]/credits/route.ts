@@ -30,7 +30,7 @@ export async function POST(req: Request, ctx: Ctx) {
       where: { id: patientId },
     });
     if (!patient) {
-      return NextResponse.json({ error: "Patient not found" }, { status: 404 });
+      return NextResponse.json({ error: "Client not found" }, { status: 404 });
     }
 
     await prisma.therapyCredit.upsert({
@@ -57,7 +57,7 @@ export async function POST(req: Request, ctx: Ctx) {
       data: { balance: updated?.balance ?? amount },
     });
   } catch (e) {
-    console.error("admin patient credits:", e);
+    console.error("admin client credits:", e);
     return NextResponse.json(
       { error: "Failed to add credits" },
       { status: 500 },

@@ -69,7 +69,7 @@ export function InvitePatientModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Invite patient</DialogTitle>
+          <DialogTitle>Invite client</DialogTitle>
           <DialogDescription>
             They&apos;ll receive a verification code and setup link.
           </DialogDescription>

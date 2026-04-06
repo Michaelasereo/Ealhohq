@@ -207,9 +207,9 @@ export default function TherapistEnrollPage() {
   };
 
   return (
-    <main className="mx-auto min-h-screen w-full max-w-[375px] px-4 py-8">
+    <div className="w-full space-y-6">
       <Progress step={step} />
-      <Card className="border-border shadow-md">
+      <Card className="border-border bg-white shadow-md">
         <CardHeader>
           <CardTitle className="text-xl">Therapist application</CardTitle>
           <CardDescription>Step {step} of 4</CardDescription>
@@ -506,6 +506,6 @@ export default function TherapistEnrollPage() {
           </p>
         </CardContent>
       </Card>
-    </main>
+    </div>
   );
 }

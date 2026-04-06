@@ -20,9 +20,16 @@ type Props = {
   threads: ThreadListItem[];
   activeId: string | null;
   onSelect: (id: string) => void;
+  /** Overrides default empty-state helper text (e.g. patient “start a conversation”). */
+  emptyHint?: string;
 };
 
-export function ChatThreadList({ threads, activeId, onSelect }: Props) {
+export function ChatThreadList({
+  threads,
+  activeId,
+  onSelect,
+  emptyHint,
+}: Props) {
   const [q, setQ] = useState("");
   const filtered = useMemo(() => {
     const t = q.trim().toLowerCase();
@@ -35,8 +42,8 @@ export function ChatThreadList({ threads, activeId, onSelect }: Props) {
       <div className="flex flex-col items-center justify-center px-4 py-16 text-center text-sm text-muted-foreground">
         <p>No messages yet</p>
         <p className="mt-2 max-w-xs">
-          When your therapist reaches out or you open a conversation from a booking,
-          threads will appear here.
+          {emptyHint ??
+            "When your therapist reaches out or you open a conversation from a booking, threads will appear here."}
         </p>
       </div>
     );

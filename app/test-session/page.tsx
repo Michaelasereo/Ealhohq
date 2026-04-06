@@ -158,7 +158,7 @@ export default function TestSessionPage() {
                       : "border-border text-muted-foreground",
                   )}
                 >
-                  Patient (UID 2)
+                  Client (UID 2)
                 </button>
               </div>
             </div>

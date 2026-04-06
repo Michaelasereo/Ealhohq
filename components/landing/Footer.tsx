@@ -18,7 +18,7 @@ const platformLinks = [
   { href: "/book", label: "Book a Session" },
   { href: "/therapist/enroll", label: "For Therapists" },
   { href: "/#notes-ai", label: "Ealho Notes AI" },
-  { href: "/organizations", label: "For Organizations" },
+  { href: "/for-organisations", label: "For Organisations" },
 ] as const;
 
 const resourceLinks = [

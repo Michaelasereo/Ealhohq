@@ -44,7 +44,7 @@ export async function POST(req: Request) {
     const patient = await getPatientByProfileId(user.id);
     if (!patient) {
       return NextResponse.json(
-        { error: "Patient profile required" },
+        { error: "Client profile required" },
         { status: 403 },
       );
     }

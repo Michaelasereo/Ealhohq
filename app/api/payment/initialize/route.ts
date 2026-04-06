@@ -1,11 +1,18 @@
 import { NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 
 import {
   formatAmountToKobo,
   generateReference,
 } from "@/lib/paystack/client";
+import { computeDiscountForSession } from "@/lib/discount/compute";
+import {
+  finalizeFreeTherapyWithDiscount,
+} from "@/lib/payment/finalize-therapy-payment";
+import { sendTherapyBookingPaidNotifications } from "@/lib/payment/send-therapy-booking-paid-notifications";
 import { getPaystackSecretKey } from "@/lib/paystack/server-keys";
 import { prisma } from "@/lib/prisma/client";
+import { chargeSessionRateNgn } from "@/lib/referral/pricing";
 
 function appUrl(): string | null {
   const u = process.env.NEXT_PUBLIC_APP_URL?.trim();
@@ -14,14 +21,6 @@ function appUrl(): string | null {
 
 export async function POST(req: Request) {
   try {
-    const secret = (await getPaystackSecretKey()).trim();
-    if (!secret) {
-      return NextResponse.json(
-        { success: false, error: "Paystack is not configured" },
-        { status: 500 },
-      );
-    }
-
     const base = appUrl();
     if (!base) {
       return NextResponse.json(
@@ -34,8 +33,11 @@ export async function POST(req: Request) {
       bookingId?: string;
       email?: string;
       metadata?: Record<string, string>;
+      discountCode?: string;
       /** e.g. `/rebook/confirm/<uuid>` — Paystack redirects here after payment */
       rebookRequestId?: string;
+      /** Inline dashboard booking — return to `/dashboard?booking=success&bookingId=…` */
+      returnToPatientDashboard?: boolean;
     };
 
     const bookingId = body.bookingId;
@@ -68,6 +70,93 @@ export async function POST(req: Request) {
       );
     }
 
+    if (booking.discountCode) {
+      return NextResponse.json(
+        { success: false, error: "A discount is already applied to this booking" },
+        { status: 400 },
+      );
+    }
+
+    const sessionRate = chargeSessionRateNgn(booking);
+    const discountInput =
+      typeof body.discountCode === "string" ? body.discountCode.trim() : "";
+
+    if (discountInput) {
+      const normalized = discountInput.toUpperCase();
+      const disc = await prisma.discountCode.findFirst({
+        where: { code: normalized, isActive: true },
+      });
+      if (!disc) {
+        return NextResponse.json(
+          { success: false, error: "Invalid discount code" },
+          { status: 400 },
+        );
+      }
+      if (disc.expiresAt && disc.expiresAt < new Date()) {
+        return NextResponse.json(
+          { success: false, error: "This discount code has expired" },
+          { status: 400 },
+        );
+      }
+      if (disc.maxUses != null && disc.usedCount >= disc.maxUses) {
+        return NextResponse.json(
+          { success: false, error: "This discount code has reached its limit" },
+          { status: 400 },
+        );
+      }
+
+      const calc = computeDiscountForSession(sessionRate, disc);
+      if (calc.isFree) {
+        try {
+          const out = await finalizeFreeTherapyWithDiscount({
+            bookingId,
+            discount: disc,
+            savedAmountNgn: calc.discountAmount,
+          });
+          if (out.shouldSendConfirmationEmail) {
+            void sendTherapyBookingPaidNotifications(out.booking).catch(
+              (err) => {
+                console.error("Therapy booking paid notifications:", err);
+              },
+            );
+          }
+        } catch (e) {
+          console.error("Free discount finalize:", e);
+          return NextResponse.json(
+            {
+              success: false,
+              error:
+                e instanceof Error ? e.message : "Could not apply discount",
+            },
+            { status: 400 },
+          );
+        }
+        return NextResponse.json({
+          success: true,
+          data: {
+            isFree: true,
+            bookingId,
+          },
+        });
+      }
+
+      await prisma.therapyBooking.update({
+        where: { id: bookingId },
+        data: {
+          discountCode: disc.code,
+          discountAmount: new Prisma.Decimal(String(calc.discountAmount)),
+        },
+      });
+    }
+
+    const secret = (await getPaystackSecretKey()).trim();
+    if (!secret) {
+      return NextResponse.json(
+        { success: false, error: "Paystack is not configured" },
+        { status: 500 },
+      );
+    }
+
     const payEmail =
       (typeof body.email === "string" && body.email.trim()) ||
       booking.guestEmail ||
@@ -95,9 +184,23 @@ export async function POST(req: Request) {
       }
     }
 
-    const amountKobo = formatAmountToKobo(
-      Number(booking.therapist.sessionRate),
-    );
+    const bookingAfterDisc = await prisma.therapyBooking.findUnique({
+      where: { id: bookingId },
+      include: { therapist: true },
+    });
+    if (!bookingAfterDisc) {
+      return NextResponse.json(
+        { success: false, error: "Booking not found" },
+        { status: 404 },
+      );
+    }
+    const rate = chargeSessionRateNgn(bookingAfterDisc);
+    const discAmt =
+      bookingAfterDisc.discountAmount != null
+        ? Number(bookingAfterDisc.discountAmount)
+        : 0;
+    const chargeNgn = Math.max(0, rate - discAmt);
+    const amountKobo = formatAmountToKobo(chargeNgn);
 
     const reference = generateReference();
 
@@ -113,6 +216,8 @@ export async function POST(req: Request) {
       )
     ) {
       callbackPath = `/rebook/confirm/${rebookId}?paid=1&bookingId=${encodeURIComponent(bookingId)}`;
+    } else if (body.returnToPatientDashboard) {
+      callbackPath = `/dashboard?booking=success&bookingId=${encodeURIComponent(bookingId)}`;
     } else {
       const isGuestFlow = Boolean(booking.guestEmail);
       callbackPath = isGuestFlow
@@ -125,6 +230,12 @@ export async function POST(req: Request) {
       product: "therapy",
       booking_id: bookingId,
     };
+    if (bookingAfterDisc.discountCode) {
+      const dc = await prisma.discountCode.findFirst({
+        where: { code: bookingAfterDisc.discountCode },
+      });
+      if (dc) meta.discount_code_id = dc.id;
+    }
     if (rebookId) meta.rebook_request_id = rebookId;
     if (body.metadata && typeof body.metadata === "object") {
       for (const [k, v] of Object.entries(body.metadata)) {

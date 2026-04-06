@@ -2,8 +2,8 @@ export const termsToc = [
   { id: "agreement", title: "1. Agreement" },
   { id: "who-we-are", title: "2. Who we are" },
   { id: "the-service", title: "3. The service" },
-  { id: "patient-obligations", title: "4. Patient obligations" },
-  { id: "payments", title: "5. Payments and refunds" },
+  { id: "patient-obligations", title: "4. Client obligations" },
+  { id: "payments", title: "5. Cancellation and rescheduling policy" },
   { id: "ai-notes", title: "6. AI-generated notes" },
   { id: "confidentiality", title: "7. Confidentiality" },
   { id: "liability", title: "8. Limitation of liability" },
@@ -25,7 +25,7 @@ export function TermsBody() {
       <section id="who-we-are" className="scroll-mt-24">
         <h2>2. Who we are</h2>
         <p>
-          Ealho Therapy is a digital mental health platform connecting patients with licensed
+          Ealho Therapy is a digital mental health platform connecting clients with licensed
           therapists in Nigeria.
         </p>
       </section>
@@ -51,7 +51,7 @@ export function TermsBody() {
       </section>
 
       <section id="patient-obligations" className="scroll-mt-24">
-        <h2>4. Patient obligations</h2>
+        <h2>4. Client obligations</h2>
         <ul>
           <li>You must be 18 or older to use this platform</li>
           <li>Provide accurate information during registration</li>
@@ -62,21 +62,45 @@ export function TermsBody() {
       </section>
 
       <section id="payments" className="scroll-mt-24">
-        <h2>5. Payments and refunds</h2>
+        <h2>5. Cancellation and rescheduling policy</h2>
+        <h3>5.1 Cancellations by clients</h3>
+        <ul>
+          <li>
+            <strong>More than 24 hours before the session:</strong> full credit refund to your Ealho
+            account. If you paid by card, the refund is processed within 5–7 business days.
+          </li>
+          <li>
+            <strong>Between 2 and 24 hours before the session:</strong> 50% credit refund (0.5 session
+            credit) for bookings paid with credits. No cash refunds in this window.
+          </li>
+          <li>
+            <strong>Less than 2 hours before the session:</strong> no refund. Session credit or payment
+            is forfeited.
+          </li>
+          <li>
+            <strong>No-shows:</strong> no refund. The session is forfeited.
+          </li>
+        </ul>
+        <h3>5.2 Rescheduling by clients</h3>
+        <ul>
+          <li>Rescheduling is allowed up to 2 hours before the session start time.</li>
+          <li>
+            Rescheduling is treated as a cancellation plus a new booking time on the same booking
+            record. If you reschedule more than 24 hours before the original start, there is no
+            additional charge beyond what you already paid.
+          </li>
+          <li>Maximum of two reschedules per booking.</li>
+        </ul>
+        <h3>5.3 Cancellations by therapists</h3>
         <p>
-          <strong>5.1</strong> Sessions are paid in full at time of booking.
+          If your therapist cancels less than 24 hours before a session, you receive a full refund
+          where applicable plus one complimentary session credit. Ealho will contact you to help
+          arrange continuity of care where possible.
         </p>
+        <h3>5.4 Ealho platform cancellations</h3>
         <p>
-          <strong>5.2</strong> Cancellations made more than 24 hours before a session are eligible for
-          a credit refund to your Ealho account.
-        </p>
-        <p>
-          <strong>5.3</strong> Cancellations within 24 hours are non-refundable except at therapist
-          discretion.
-        </p>
-        <p>
-          <strong>5.4</strong> In the event of technical failure preventing session delivery, a full
-          credit will be issued.
+          If a session cannot be delivered because of a platform issue on our side, you receive a full
+          refund where applicable plus one complimentary session credit.
         </p>
       </section>
 
@@ -87,7 +111,7 @@ export function TermsBody() {
           are a clinical tool for your therapist&apos;s use.
         </p>
         <p>
-          <strong>6.2</strong> Notes are visible only to your treating therapist. Patients do not have
+          <strong>6.2</strong> Notes are visible only to your treating therapist. Clients do not have
           access to AI-generated session notes.
         </p>
         <p>

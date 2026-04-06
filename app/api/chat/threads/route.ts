@@ -2,6 +2,7 @@ import { randomUUID } from "crypto";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { resolveAppRole } from "@/lib/auth/resolve-app-role";
 import { decryptMessage } from "@/lib/chat/encryption";
 import { patientHasFullChatConsent } from "@/lib/chat/consent";
 import {
@@ -10,6 +11,7 @@ import {
 } from "@/lib/queries/patient";
 import { prisma } from "@/lib/prisma/client";
 import { createClient } from "@/lib/supabase/server";
+import { therapistPublicLabel } from "@/lib/therapist-display-name";
 
 export const runtime = "nodejs";
 
@@ -47,7 +49,10 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const role = user.app_metadata?.role as string | undefined;
+    const role = await resolveAppRole(user.id);
+    if (!role) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
 
     if (role === "patient") {
       const patient = await ensureRegisteredPatientForUser(user);
@@ -91,7 +96,7 @@ export async function GET() {
           return {
             id: t.id,
             status: t.status,
-            otherPartyName: t.therapist.profile.fullName,
+            otherPartyName: therapistPublicLabel(t.therapist.profile.fullName),
             otherPartyPhoto:
               t.therapist.profilePhoto ?? "/Ealho-logo.png",
             lastMessagePreview: lastPreview,
@@ -178,7 +183,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const role = user.app_metadata?.role as string | undefined;
+    const role = await resolveAppRole(user.id);
+    if (!role) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     const ip =
       req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null;
 
@@ -192,7 +201,7 @@ export async function POST(req: Request) {
 
       const patient = await ensureRegisteredPatientForUser(user);
       if (!patient) {
-        return NextResponse.json({ error: "Patient profile required" }, { status: 403 });
+        return NextResponse.json({ error: "Client profile required" }, { status: 403 });
       }
 
       const okConsent = await patientHasFullChatConsent(patient.id);
@@ -275,7 +284,7 @@ export async function POST(req: Request) {
       const okConsent = await patientHasFullChatConsent(patientId);
       if (!okConsent) {
         return NextResponse.json(
-          { error: "Patient has not completed messaging consent" },
+          { error: "Client has not completed messaging consent" },
           { status: 403 },
         );
       }

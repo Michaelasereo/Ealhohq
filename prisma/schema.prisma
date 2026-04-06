@@ -66,7 +66,7 @@ model TherapyTherapist {
   qualifications  String[]
   profilePhoto    String?
   status          String   @default("pending") // pending | approved | rejected | suspended
-  sessionRate     Decimal  @default(15000) @db.Decimal(10, 2)
+  sessionRate     Decimal  @default(20000) @db.Decimal(10, 2)
   sessionDuration Int      @default(50) // 50 | 60 | 90 — set by admin only
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -79,6 +79,7 @@ model TherapyTherapist {
   notes                 TherapySessionNote[]
   rebookingRequests     TherapyRebookingRequest[]
   chatThreads           ChatThread[]
+  earningsConfig        EarningsConfig?
 
   @@map("therapy_therapists")
 }
@@ -173,6 +174,7 @@ model TherapyBooking {
   guestEmail        String?
   guestPhone        String?
   guestBookingReason String?
+  professionalType  String?
   isAnonymous       Boolean   @default(false)
   clientAlias       String? // therapist-facing alias when isAnonymous
   date              DateTime
@@ -189,6 +191,16 @@ model TherapyBooking {
   paidWithCredits   Boolean   @default(false)
   reminder24hSent   Boolean   @default(false)
   reminder1hSent    Boolean   @default(false)
+  cancellationReason String?
+  cancelledBy        String? // client | therapist | admin | platform
+  cancelledAt        DateTime?
+  rescheduleCount    Int       @default(0)
+  lastRescheduledAt  DateTime?
+  discountCode       String?
+  discountAmount     Decimal?  @db.Decimal(10, 2)
+  referralCode       String?
+  referralPartnerId  String?   @db.Uuid
+  isReferral         Boolean   @default(false)
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 
@@ -196,6 +208,9 @@ model TherapyBooking {
   patient   TherapyPatient?  @relation(fields: [patientId], references: [id])
   session              TherapySession?
   rebookingRequestLink TherapyRebookingRequest?
+  discountCodeUses   DiscountCodeUse[]
+  referralPartner    ReferralPartner? @relation(fields: [referralPartnerId], references: [id])
+  referralSession    ReferralSession?
 
   @@map("therapy_bookings")
 }
@@ -217,6 +232,8 @@ model TherapySession {
   notesGenerated   Boolean   @default(false)
   notesGeneratedAt DateTime?
   generatedBy      String? // claude | deepseek (internal only)
+  therapistEarnings Decimal? @db.Decimal(10, 2)
+  platformEarnings  Decimal? @db.Decimal(10, 2)
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
@@ -253,7 +270,7 @@ model TherapySessionNote {
 model TherapyCredit {
   id        String   @id @default(uuid()) @db.Uuid
   patientId String   @unique @db.Uuid
-  balance   Int      @default(0)
+  balance   Decimal  @default(0) @db.Decimal(10, 2)
   tier      String   @default("bronze") // bronze | silver | gold | platinum
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -266,7 +283,7 @@ model TherapyCredit {
 model TherapyCreditTransaction {
   id        String   @id @default(uuid()) @db.Uuid
   patientId String   @db.Uuid
-  amount    Int // positive = purchase, negative = used
+  amount    Decimal  @db.Decimal(10, 2) // positive = purchase, negative = used
   type      String // purchase | session | refund
   reference String?
   createdAt DateTime @default(now())
@@ -314,6 +331,56 @@ model TherapyRebookingRequest {
   booking   TherapyBooking?  @relation(fields: [bookingId], references: [id])
 
   @@map("therapy_rebooking_requests")
+}
+
+// ─── DISCOUNT CODES ───────────────────────────────
+
+model DiscountCode {
+  id            String    @id @default(uuid()) @db.Uuid
+  code          String    @unique
+  discountType  String // percentage | fixed | full
+  discountValue Decimal   @db.Decimal(10, 2)
+  maxUses       Int?
+  usedCount     Int       @default(0)
+  expiresAt     DateTime?
+  isActive      Boolean   @default(true)
+  createdBy     String?   @db.Uuid
+  createdAt     DateTime  @default(now())
+
+  uses DiscountCodeUse[]
+
+  @@map("discount_codes")
+}
+
+model DiscountCodeUse {
+  id          String   @id @default(uuid()) @db.Uuid
+  codeId      String   @db.Uuid
+  bookingId   String   @db.Uuid
+  usedAt      DateTime @default(now())
+  savedAmount Decimal  @db.Decimal(10, 2)
+
+  code    DiscountCode   @relation(fields: [codeId], references: [id], onDelete: Cascade)
+  booking TherapyBooking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@map("discount_code_uses")
+}
+
+// ─── EARNINGS SPLIT (per therapist) ───────────────
+
+model EarningsConfig {
+  id               String   @id @default(uuid()) @db.Uuid
+  therapistId      String   @unique @db.Uuid
+  therapistPercent Decimal  @db.Decimal(5, 2)
+  platformPercent  Decimal  @db.Decimal(5, 2)
+  effectiveFrom    DateTime @default(now())
+  setByAdminId     String?  @db.Uuid
+  notes            String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  therapist TherapyTherapist @relation(fields: [therapistId], references: [id], onDelete: Cascade)
+
+  @@map("earnings_config")
 }
 
 // ─── CHAT (patient ↔ therapist, encrypted content) ─
@@ -413,4 +480,78 @@ model ChatConsent {
   patient TherapyPatient @relation(fields: [patientId], references: [id], onDelete: Cascade)
 
   @@map("chat_consents")
+}
+
+// ─── REFERRAL PARTNERS ────────────────────────────
+
+model ReferralPartner {
+  id              String   @id @default(uuid()) @db.Uuid
+  name            String
+  contactName     String
+  email           String   @unique
+  phone           String
+  address         String?
+  city            String
+  referralCode    String   @unique
+  referralSlug    String   @unique
+  tier            String   @default("standard")
+  feePerSession   Decimal  @default(3000) @db.Decimal(10, 2)
+  bankName        String?
+  accountNumber   String?
+  accountName     String?
+  isActive        Boolean  @default(true)
+  totalReferred   Int      @default(0)
+  totalEarned     Decimal  @default(0) @db.Decimal(10, 2)
+  totalPaid       Decimal  @default(0) @db.Decimal(10, 2)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  referrals ReferralSession[]
+  payouts   ReferralPayout[]
+  bookings  TherapyBooking[]
+
+  @@map("referral_partners")
+}
+
+model ReferralSession {
+  id           String   @id @default(uuid()) @db.Uuid
+  partnerId    String   @db.Uuid
+  bookingId    String   @unique @db.Uuid
+  patientEmail String
+  feeAmount    Decimal  @db.Decimal(10, 2)
+  status       String   @default("pending")
+  payoutId     String?  @db.Uuid
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  partner ReferralPartner  @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  payout  ReferralPayout?  @relation(fields: [payoutId], references: [id])
+  booking TherapyBooking   @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([partnerId])
+  @@index([patientEmail])
+  @@map("referral_sessions")
+}
+
+model ReferralPayout {
+  id            String    @id @default(uuid()) @db.Uuid
+  partnerId     String    @db.Uuid
+  amount        Decimal   @db.Decimal(10, 2)
+  sessionCount  Int
+  status        String    @default("pending")
+  bankName      String?
+  accountNumber String?
+  accountName   String?
+  reference     String?
+  paidAt        DateTime?
+  notes         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  partner  ReferralPartner   @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  sessions ReferralSession[]
+
+  @@index([partnerId])
+  @@index([status])
+  @@map("referral_payouts")
 }

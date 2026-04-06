@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { useChat, type ChatMessageRow } from "@/hooks/useChat";
+import { therapistPublicLabel } from "@/lib/therapist-display-name";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -91,8 +92,8 @@ export function ChatWindow({
 
   const placeholder =
     currentUserRole === "patient"
-      ? `Message ${otherPartyName.match(/^dr\.?\s/i) ? otherPartyName : `Dr. ${otherPartyName}`}…`
-      : `Message ${otherPartyName.split(/\s+/)[0] ?? "patient"}…`;
+      ? `Message ${therapistPublicLabel(otherPartyName)}…`
+      : `Message ${otherPartyName.split(/\s+/)[0] ?? "client"}…`;
 
   async function handleSend() {
     const t = text.trim();

@@ -6,6 +6,7 @@ import {
   TherapistCard,
   TherapistCardSkeleton,
 } from "@/components/booking/TherapistCard";
+import { CaptureReferralFromUrl } from "@/components/referral/CaptureReferralFromUrl";
 
 type TherapistRow = {
   id: string;
@@ -63,6 +64,7 @@ export default function PatientBookPage() {
 
   return (
     <main className="mx-auto min-h-screen w-full max-w-md p-4">
+      <CaptureReferralFromUrl />
       <h1 className="text-xl font-semibold">Welcome back {greet}</h1>
       <p className="mt-1 text-sm text-muted-foreground">Choose your therapist</p>
 

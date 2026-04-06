@@ -1,5 +1,7 @@
 /** Shared HTML fragments for transactional emails (inline styles for client compatibility). */
 
+import { getAppOrigin } from "@/lib/emails/utils";
+
 export function escapeHtml(s: string): string {
   return s
     .replaceAll("&", "&amp;")
@@ -9,6 +11,8 @@ export function escapeHtml(s: string): string {
 }
 
 export function emailShell(inner: string): string {
+  const origin = escapeHtml(getAppOrigin());
+  const originHost = escapeHtml(getAppOrigin().replace(/^https?:\/\//, ""));
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -23,7 +27,7 @@ export function emailShell(inner: string): string {
         <table role="presentation" width="100%" style="max-width:520px;background:#ffffff;border-radius:12px;padding:32px 28px;box-shadow:0 4px 24px rgba(36,34,30,0.08);">
           ${inner}
         </table>
-        <p style="margin:20px 0 0;font-size:12px;color:#6b6b6b;">Ealho Therapy · <a href="https://ealhohq.com" style="color:#292612;">ealhohq.com</a></p>
+        <p style="margin:20px 0 0;font-size:12px;color:#6b6b6b;"><a href="${origin}" style="color:#292612;text-decoration:underline;">${originHost}</a></p>
       </td>
     </tr>
   </table>
@@ -31,10 +35,29 @@ export function emailShell(inner: string): string {
 </html>`;
 }
 
+/** Absolute URL to the mark-only logo (icon, no wordmark) for email &lt;img src&gt;. */
+export function emailMarkLogoUrl(): string {
+  return `${getAppOrigin()}/Ealho-mark.svg`;
+}
+
+/**
+ * Mark-only brand image for HTML emails. Uses hosted SVG (PNG alternative: add Ealho-mark.png if needed for Outlook).
+ */
+export function emailMarkLogoImg(options?: {
+  maxHeightPx?: number;
+  align?: "left" | "center";
+}): string {
+  const maxH = options?.maxHeightPx ?? 52;
+  const align = options?.align ?? "center";
+  const src = escapeHtml(emailMarkLogoUrl());
+  return `<div style="text-align:${align};line-height:0;">
+    <img src="${src}" alt="Ealho" width="52" height="52" style="display:inline-block;border:0;outline:none;text-decoration:none;max-height:${maxH}px;width:auto;height:auto;" />
+  </div>`;
+}
+
 export function brandHeader(): string {
   return `<tr><td style="padding-bottom:24px;border-bottom:1px solid #e8e6dd;">
-    <div style="font-size:22px;font-weight:700;letter-spacing:0.04em;color:#292612;">EALHO</div>
-    <div style="font-size:13px;color:#474433;margin-top:4px;">Therapy</div>
+    ${emailMarkLogoImg({ maxHeightPx: 48, align: "center" })}
   </td></tr>`;
 }
 

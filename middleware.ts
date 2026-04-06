@@ -8,6 +8,7 @@ import { type NextRequest, NextResponse } from "next/server";
 
 function isPublicPath(path: string): boolean {
   if (path === "/" || path.startsWith("/book")) return true;
+  if (path.startsWith("/refer")) return true;
   if (path === "/organizations") return true;
   if (
     path === "/privacy" ||
@@ -42,7 +43,8 @@ function isProtectedPath(path: string): boolean {
     path.startsWith("/history") ||
     path.startsWith("/profile") ||
     path.startsWith("/messages") ||
-    path.startsWith("/therapist")
+    path.startsWith("/therapist") ||
+    path.startsWith("/partners")
   );
 }
 
@@ -111,6 +113,9 @@ export async function middleware(request: NextRequest) {
       }
       return NextResponse.redirect(new URL("/therapist/pending", request.url));
     }
+    if (role === "partner") {
+      return NextResponse.redirect(new URL("/partners/dashboard", request.url));
+    }
   }
 
   if (session && path === "/therapist/login") {
@@ -161,6 +166,9 @@ export async function middleware(request: NextRequest) {
   }
 
   if (!session && isProtectedPath(path)) {
+    if (path.startsWith("/partners")) {
+      return NextResponse.redirect(new URL("/login", request.url));
+    }
     if (
       path.startsWith("/therapist") &&
       !path.startsWith("/therapist/enroll") &&
@@ -202,11 +210,25 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/therapist/dashboard", request.url));
   }
 
+  if (path.startsWith("/partners")) {
+    if (role === "partner") return supabaseResponse;
+    if (role === "admin") {
+      return NextResponse.redirect(new URL("/admin/dashboard", request.url));
+    }
+    if (role === "therapist") {
+      return NextResponse.redirect(new URL("/therapist/dashboard", request.url));
+    }
+    if (role === "patient") {
+      return NextResponse.redirect(new URL("/dashboard", request.url));
+    }
+  }
+
   return supabaseResponse;
 }
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    // Skip auth/session work for public lead capture (and static assets).
+    "/((?!_next/static|_next/image|favicon.ico|api/leads/|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };

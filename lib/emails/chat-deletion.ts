@@ -1,3 +1,5 @@
+import { emailMarkLogoImg } from "@/lib/emails/partials";
+
 export function chatDeletionScheduledSubject(scheduledDateLabel: string): string {
   return `Ealho: your chat history will be removed on ${scheduledDateLabel}`;
 }
@@ -12,6 +14,7 @@ export function chatDeletionScheduledHtml(params: {
 <!DOCTYPE html>
 <html>
 <body style="font-family: system-ui, sans-serif; line-height: 1.5; color: #111;">
+  ${emailMarkLogoImg({ maxHeightPx: 40, align: "left" })}
   <p>Hi ${firstName},</p>
   <p>You requested to delete all of your therapy chat messages on Ealho. They will be permanently removed on <strong>${scheduledDateLabel}</strong> (West Africa Time).</p>
   <p>Until then you can still read your conversations, but you won’t be able to send new messages. To keep your chats, open your dashboard profile and cancel the deletion before that date.</p>
@@ -32,6 +35,7 @@ export function chatDeletionCompletedHtml(params: {
 <!DOCTYPE html>
 <html>
 <body style="font-family: system-ui, sans-serif; line-height: 1.5; color: #111;">
+  ${emailMarkLogoImg({ maxHeightPx: 40, align: "left" })}
   <p>Hi ${params.firstName},</p>
   <p>Your therapy chat messages on Ealho have been permanently removed as scheduled. Conversation records are no longer readable in the app.</p>
   <p style="color:#666;font-size:14px;">You can start a new conversation with your therapist after a future session if messaging is available.</p>

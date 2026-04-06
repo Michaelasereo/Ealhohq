@@ -14,7 +14,7 @@ export const templates = {
 
 Your Ealho Therapy session is confirmed.
 
-👨‍⚕️ Therapist: ${params.therapistName}
+${params.therapistName}
 📅 Date: ${params.date}
 🕐 Time: ${params.time} WAT
 ⏱ Duration: ${params.duration} minutes
@@ -37,7 +37,7 @@ Reply HELP if you need assistance.`,
 
 Reminder: You have a therapy session tomorrow.
 
-👨‍⚕️ ${params.therapistName}
+${params.therapistName}
 📅 ${params.date}
 🕐 ${params.time} WAT
 
@@ -55,7 +55,7 @@ Reply HELP to reschedule.`,
 
 Your session starts in 1 hour.
 
-👨‍⚕️ ${params.therapistName}
+${params.therapistName}
 🕐 ${params.time} WAT
 
 Join here: ${params.sessionLink}
@@ -77,13 +77,13 @@ To rebook, visit: ${appUrl()}/book
 If you have questions, reply to this message.`,
 
   therapistSessionBooked: (params: {
-    therapistName: string;
+    therapistGreetingName: string;
     patientDisplay: string;
     date: string;
     time: string;
     sessionType: string;
     isAnonymous?: boolean;
-  }) => `Hi ${params.therapistName}! 📅
+  }) => `Hi ${params.therapistGreetingName}! 📅
 
 New session booked.
 

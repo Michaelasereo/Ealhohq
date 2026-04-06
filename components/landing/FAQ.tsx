@@ -34,7 +34,7 @@ const faqByTab = {
     },
     {
       q: "What if I need to cancel?",
-      a: "Cancellations made more than 24 hours before your session receive a full credit refund. Cancellations within 24 hours are non-refundable except at therapist discretion.",
+      a: "More than 24 hours before: full refund (card) or full credit back (credit bookings). Between 2 and 24 hours: credit bookings get 50% credit back; card payments are not refunded in that window. Less than 2 hours before start: no refund. See our Terms for the full policy.",
     },
   ],
   security: [
@@ -74,7 +74,7 @@ const faqByTab = {
     },
     {
       q: "What is the standard session rate?",
-      a: "Session rates are set by individual therapists and range from ₦15,000 to ₦25,000 per session. The rate is shown clearly on each therapist's profile before you book.",
+      a: "Session rates are set by individual therapists; most list ₦20,000 per session. The exact rate is shown on each therapist's profile before you book.",
     },
     {
       q: "Do credits work with any therapist?",

@@ -193,30 +193,27 @@ export function SetupWizard() {
 
   if (!email) {
     return (
-      <main className="mx-auto flex min-h-screen w-full max-w-[375px] flex-col justify-center px-4 py-8">
-        <Card className="w-full border-border shadow-md">
-          <CardHeader>
-            <CardTitle className="text-2xl">Invalid link</CardTitle>
-            <CardDescription>
-              Open the setup link from your invitation email.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Link
-              href="/login"
-              className="inline-flex h-12 w-full items-center justify-center rounded-lg border border-border bg-background px-4 text-sm font-medium hover:bg-muted"
-            >
-              Back to log in
-            </Link>
-          </CardContent>
-        </Card>
-      </main>
+      <Card className="w-full border-border bg-white shadow-md">
+        <CardHeader>
+          <CardTitle className="text-2xl">Invalid link</CardTitle>
+          <CardDescription>
+            Open the setup link from your invitation email.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Link
+            href="/login"
+            className="inline-flex h-12 w-full items-center justify-center rounded-lg border border-border bg-background px-4 text-sm font-medium hover:bg-muted"
+          >
+            Back to log in
+          </Link>
+        </CardContent>
+      </Card>
     );
   }
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-[375px] flex-col justify-center px-4 py-8">
-      <Card className="w-full border-border shadow-md">
+    <Card className="w-full border-border bg-white shadow-md">
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl">
             {step === "verify" && "Verify your account"}
@@ -425,6 +422,5 @@ export function SetupWizard() {
           </p>
         </CardContent>
       </Card>
-    </main>
   );
 }

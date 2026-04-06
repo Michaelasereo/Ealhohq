@@ -214,7 +214,7 @@ export function PrivacyBody() {
       <section id="anonymous" className="scroll-mt-24">
         <h2>8. Anonymous sessions</h2>
         <p>
-          We offer an anonymous booking option for patients who prefer additional privacy. When you
+          We offer an anonymous booking option for clients who prefer additional privacy. When you
           book anonymously:
         </p>
         <ul>

@@ -19,6 +19,7 @@ import { sendTransactionalEmail } from "@/lib/reminders/send-email";
 import { sendWhatsAppText } from "@/lib/reminders/send-whatsapp";
 import { createClient } from "@/lib/supabase/server";
 import { appBaseUrl } from "@/lib/app-url";
+import { therapistPublicLabel } from "@/lib/therapist-display-name";
 import { watDayStart } from "@/lib/wat-datetime";
 
 const bodySchema = z
@@ -64,7 +65,7 @@ export async function POST(req: Request) {
     );
     if (!okRel) {
       return NextResponse.json(
-        { error: "You do not have an existing booking with this patient" },
+        { error: "You do not have an existing booking with this client" },
         { status: 403 },
       );
     }
@@ -83,7 +84,7 @@ export async function POST(req: Request) {
       therapist.sessionDuration,
     );
 
-    const expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000);
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
     const request = await prisma.therapyRebookingRequest.create({
       data: {
@@ -103,13 +104,15 @@ export async function POST(req: Request) {
     });
     if (!patient) {
       await prisma.therapyRebookingRequest.delete({ where: { id: request.id } });
-      return NextResponse.json({ error: "Patient not found" }, { status: 404 });
+      return NextResponse.json({ error: "Client not found" }, { status: 404 });
     }
 
     const tProfile = await prisma.sharedProfile.findUnique({
       where: { id: therapist.profileId },
     });
-    const therapistName = tProfile?.fullName ?? "Your therapist";
+    const therapistName = tProfile?.fullName?.trim()
+      ? therapistPublicLabel(tProfile.fullName)
+      : "Your therapist";
     const base = appBaseUrl();
     const confirmUrl = base
       ? `${base}/rebook/confirm/${request.id}`
@@ -140,7 +143,7 @@ Reply DECLINE to decline this suggestion.`;
     }
 
     const html = rebookInvitationHtml({
-      patientFirstName: pf,
+      clientFirstName: pf,
       therapistName,
       dateLine,
       timeLine,
@@ -172,8 +175,15 @@ Reply DECLINE to decline this suggestion.`;
     });
   } catch (e) {
     console.error("therapist rebook POST:", e);
+    const detail =
+      process.env.NODE_ENV === "development" && e instanceof Error
+        ? e.message
+        : undefined;
     return NextResponse.json(
-      { error: "Failed to create rebooking request" },
+      {
+        error: "Failed to create rebooking request",
+        ...(detail ? { detail } : {}),
+      },
       { status: 500 },
     );
   }

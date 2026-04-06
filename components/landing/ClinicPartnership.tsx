@@ -82,13 +82,6 @@ export function ClinicPartnership() {
         fieldErrors?: Record<string, string[] | undefined>;
       };
       if (!res.ok || !json.success) {
-        const apiMsg =
-          typeof json.error === "string" && json.error.length > 0
-            ? json.error
-            : res.status === 400
-              ? "Please check all required fields, selects, and at least one interest."
-              : "Something went wrong. Please email hello@ealho.com";
-        setSubmitError(apiMsg);
         if (json.fieldErrors && typeof json.fieldErrors === "object") {
           for (const [key, msgs] of Object.entries(json.fieldErrors)) {
             if (Array.isArray(msgs) && msgs[0]) {
@@ -96,6 +89,18 @@ export function ClinicPartnership() {
             }
           }
         }
+        const apiMsg =
+          typeof json.error === "string" && json.error.length > 0
+            ? json.error
+            : res.status === 400
+              ? "Please check all required fields, selects, and at least one interest."
+              : "Something went wrong. Please email hello@ealho.com";
+        const hadFieldErrors =
+          json.fieldErrors &&
+          typeof json.fieldErrors === "object" &&
+          Object.keys(json.fieldErrors).length > 0;
+        // Field-level messages are enough for 400s; keep banner only for 5xx / no field mapping.
+        setSubmitError(hadFieldErrors ? null : apiMsg);
         return;
       }
       setSuccess(true);
@@ -175,7 +180,7 @@ export function ClinicPartnership() {
                   <Label htmlFor="fullName">Your name</Label>
                   <Input
                     id="fullName"
-                    placeholder="Dr. Amaka Obi"
+                    placeholder="Amaka Obi, Licensed Therapist"
                     className="min-h-11"
                     {...form.register("fullName")}
                   />

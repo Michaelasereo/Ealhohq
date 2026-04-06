@@ -16,7 +16,9 @@ import {
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { LoadingWithCopy } from "@/components/shared/LoadingWithCopy";
 import { Skeleton } from "@/components/ui/skeleton";
+import { DASHBOARD_MESSAGES } from "@/lib/loading-messages";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CREDIT_PACKAGES } from "@/lib/credits/packages";
 import { tierFromBalance } from "@/lib/credits/purchase-config";
@@ -30,17 +32,56 @@ import { PatientMessagingPrivacyCard } from "@/components/patient/PatientMessagi
 import { QuickRebookModal } from "@/components/patient/QuickRebookModal";
 import { PatientMessagesTab } from "@/components/patient/PatientMessagesTab";
 import type { ThreadListItem } from "@/components/chat/ChatThreadList";
-import { formatWAT } from "@/lib/wat-datetime";
+import { bookingDateStartToIso, formatWAT } from "@/lib/wat-datetime";
 import { cn } from "@/lib/utils";
 
 type MainTab = "home" | "sessions" | "messages" | "profile" | "credits";
 
-type DashboardData = {
+type DashboardStatsZone = {
   firstName: string;
-  nextSession: PatientSessionView | null;
-  recentSessions: PatientSessionView[];
-  creditBalance: number;
+  totalSessions: number;
+  credits: { balance: number; tier: string };
 };
+
+type DashboardBookingRow = {
+  id: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  sessionType: string;
+  therapist: { id: string; name: string; photo: string };
+  session: {
+    id: string;
+    sessionNumber: number;
+    feedbackSubmitted: boolean;
+  } | null;
+};
+
+type DashboardNextZone = {
+  upcomingSession: DashboardBookingRow | null;
+};
+
+type DashboardRecentZone = {
+  recentSessions: DashboardBookingRow[];
+};
+
+function mapBookingToPatientView(
+  b: DashboardBookingRow,
+  status: PatientSessionView["status"],
+  durationMins = 50,
+): PatientSessionView {
+  const dateIso = bookingDateStartToIso(new Date(b.date), b.startTime);
+  return {
+    id: b.session?.id ?? b.id,
+    bookingId: b.id,
+    therapist: b.therapist,
+    dateIso,
+    durationMins,
+    type: b.sessionType === "intake" ? "intake" : "follow-up",
+    status,
+    feedbackSubmitted: b.session?.feedbackSubmitted ?? false,
+  };
+}
 
 type SessionsData = {
   upcoming: PatientSessionView[];
@@ -135,19 +176,58 @@ export function PatientDashboardClient() {
     photo: string;
   } | null>(null);
 
-  const dashboardQ = useQuery({
-    queryKey: ["patient-dashboard"],
+  const homeStatsQ = useQuery({
+    queryKey: ["patient-dashboard", "stats"],
     queryFn: async () => {
-      const r = await fetch("/api/patient/dashboard", { credentials: "include" });
+      const r = await fetch("/api/patient/dashboard?zone=stats", {
+        credentials: "include",
+      });
       const j = (await r.json()) as {
         success?: boolean;
-        data?: DashboardData | null;
+        data?: DashboardStatsZone;
         error?: string;
       };
       if (r.status === 401) throw new Error("Please sign in again.");
       if (!r.ok) throw new Error(j.error ?? "Failed to load");
-      return j.data ?? null;
+      return j.data!;
     },
+    enabled: activeTab === "home",
+  });
+
+  const homeNextQ = useQuery({
+    queryKey: ["patient-dashboard", "next"],
+    queryFn: async () => {
+      const r = await fetch("/api/patient/dashboard?zone=next", {
+        credentials: "include",
+      });
+      const j = (await r.json()) as {
+        success?: boolean;
+        data?: DashboardNextZone;
+        error?: string;
+      };
+      if (r.status === 401) throw new Error("Please sign in again.");
+      if (!r.ok) throw new Error(j.error ?? "Failed to load");
+      return j.data!;
+    },
+    enabled: activeTab === "home",
+  });
+
+  const homeRecentQ = useQuery({
+    queryKey: ["patient-dashboard", "recent"],
+    queryFn: async () => {
+      const r = await fetch("/api/patient/dashboard?zone=recent", {
+        credentials: "include",
+      });
+      const j = (await r.json()) as {
+        success?: boolean;
+        data?: DashboardRecentZone;
+        error?: string;
+      };
+      if (r.status === 401) throw new Error("Please sign in again.");
+      if (!r.ok) throw new Error(j.error ?? "Failed to load");
+      return j.data!;
+    },
+    enabled: activeTab === "home",
   });
 
   const sessionsQ = useQuery({
@@ -355,29 +435,36 @@ export function PatientDashboardClient() {
     router.refresh();
   }
 
-  const loadingShell =
-    dashboardQ.isLoading && activeTab === "home" ? (
-      <div className="space-y-4">
-        <Skeleton className="h-8 w-2/3" />
-        <Skeleton className="h-36 w-full rounded-2xl" />
-        <Skeleton className="h-24 w-full rounded-xl" />
-        <Skeleton className="h-24 w-full rounded-xl" />
-      </div>
-    ) : null;
+  const homeFirstLoad =
+    activeTab === "home" &&
+    homeStatsQ.isPending &&
+    homeStatsQ.fetchStatus === "fetching" &&
+    !homeStatsQ.data;
 
-  if (dashboardQ.isError && activeTab === "home") {
+  const loadingShell = homeFirstLoad ? (
+    <div className="flex min-h-[40vh] flex-col items-center justify-center py-6">
+      <LoadingWithCopy
+        messages={[...DASHBOARD_MESSAGES]}
+        size="lg"
+        showProgressBar
+        estimatedSeconds={4}
+      />
+    </div>
+  ) : null;
+
+  if (homeStatsQ.isError && activeTab === "home") {
     return (
       <main className="mx-auto min-h-screen w-full max-w-md p-4 pb-28">
         <p className="text-destructive">
-          {dashboardQ.error instanceof Error
-            ? dashboardQ.error.message
+          {homeStatsQ.error instanceof Error
+            ? homeStatsQ.error.message
             : "Error"}
         </p>
       </main>
     );
   }
 
-  const dash = dashboardQ.data;
+  const dashStats = homeStatsQ.data;
 
   const lastT = lastTherapistQ.data;
   const chatUnread =
@@ -396,13 +483,26 @@ export function PatientDashboardClient() {
       {activeTab === "home" && (
         <section className="space-y-4">
           {loadingShell}
-          {dash && (
+          {dashStats && (
             <>
               <h1 className="text-2xl font-semibold">
-                {greetingWat()}, {dash.firstName} 👋
+                {greetingWat()}, {dashStats.firstName} 👋
               </h1>
-              {dash.nextSession ? (
-                <NextSessionCard s={dash.nextSession} />
+              {homeNextQ.isPending ? (
+                <Skeleton className="h-36 w-full rounded-2xl" />
+              ) : homeNextQ.isError ? (
+                <p className="text-sm text-destructive">
+                  {homeNextQ.error instanceof Error
+                    ? homeNextQ.error.message
+                    : "Could not load your next session."}
+                </p>
+              ) : homeNextQ.data?.upcomingSession ? (
+                <NextSessionCard
+                  s={mapBookingToPatientView(
+                    homeNextQ.data.upcomingSession,
+                    "upcoming",
+                  )}
+                />
               ) : (
                 <div className="rounded-2xl border p-4">
                   <p className="mb-3">You have no upcoming sessions</p>
@@ -468,48 +568,64 @@ export function PatientDashboardClient() {
               <div>
                 <h2 className="mb-2 font-medium">Past sessions</h2>
                 <div className="space-y-2">
-                  {dash.recentSessions.length === 0 ? (
+                  {homeRecentQ.isPending ? (
+                    <div className="flex min-h-[100px] items-center justify-center rounded-xl border border-dashed p-4">
+                      <LoadingWithCopy
+                        messages={["Fetching your sessions...", "Almost there..."]}
+                        size="md"
+                      />
+                    </div>
+                  ) : homeRecentQ.isError ? (
+                    <p className="text-sm text-destructive">
+                      {homeRecentQ.error instanceof Error
+                        ? homeRecentQ.error.message
+                        : "Could not load sessions."}
+                    </p>
+                  ) : (homeRecentQ.data?.recentSessions.length ?? 0) === 0 ? (
                     <p className="text-sm text-muted-foreground">
                       No past sessions yet.
                     </p>
                   ) : (
-                    dash.recentSessions.map((s) => (
-                      <div key={s.id} className="rounded-xl border p-3 text-sm">
-                        <div className="flex flex-wrap items-start justify-between gap-2">
-                          <div>
-                            <p className="font-medium">{s.therapist.name}</p>
-                            <p>
-                              {formatWAT(s.dateIso)} · {s.type}
-                            </p>
+                    (homeRecentQ.data?.recentSessions ?? []).map((b) => {
+                      const s = mapBookingToPatientView(b, "completed");
+                      return (
+                        <div key={s.id} className="rounded-xl border p-3 text-sm">
+                          <div className="flex flex-wrap items-start justify-between gap-2">
+                            <div>
+                              <p className="font-medium">{s.therapist.name}</p>
+                              <p>
+                                {formatWAT(s.dateIso)} · {s.type}
+                              </p>
+                            </div>
+                            {s.status === "completed" ? (
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="min-h-9 shrink-0 border-primary text-primary hover:bg-primary/10"
+                                onClick={() =>
+                                  setQuickRebook({
+                                    id: s.therapist.id,
+                                    name: s.therapist.name,
+                                    photo: s.therapist.photo,
+                                  })
+                                }
+                              >
+                                Book again
+                              </Button>
+                            ) : null}
                           </div>
-                          {s.status === "completed" ? (
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              className="min-h-9 shrink-0 border-primary text-primary hover:bg-primary/10"
-                              onClick={() =>
-                                setQuickRebook({
-                                  id: s.therapist.id,
-                                  name: s.therapist.name,
-                                  photo: s.therapist.photo,
-                                })
-                              }
+                          {!s.feedbackSubmitted && s.status === "completed" ? (
+                            <Link
+                              href={`/sessions/${s.id}/feedback`}
+                              className="mt-2 inline-block text-primary underline"
                             >
-                              Book again
-                            </Button>
+                              Leave feedback
+                            </Link>
                           ) : null}
                         </div>
-                        {!s.feedbackSubmitted && s.status === "completed" ? (
-                          <Link
-                            href={`/sessions/${s.id}/feedback`}
-                            className="mt-2 inline-block text-primary underline"
-                          >
-                            Leave feedback
-                          </Link>
-                        ) : null}
-                      </div>
-                    ))
+                      );
+                    })
                   )}
                 </div>
               </div>

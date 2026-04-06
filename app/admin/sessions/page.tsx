@@ -6,6 +6,7 @@ import { Calendar, Loader2 } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { AdminSessionBookingModal } from "@/components/admin/AdminSessionBookingModal";
+import { therapistPublicLabel } from "@/lib/therapist-display-name";
 import { Button } from "@/components/ui/button";
 
 type BookingRow = {
@@ -16,6 +17,7 @@ type BookingRow = {
   status: string;
   paymentStatus: string;
   sessionType: string;
+  professionalType: string | null;
   paidWithCredits: boolean;
   therapist: {
     profile: { fullName: string };
@@ -86,7 +88,8 @@ export default function AdminSessionsPage() {
                 <th className="p-3 font-medium">Date</th>
                 <th className="p-3 font-medium">Time</th>
                 <th className="p-3 font-medium">Therapist</th>
-                <th className="p-3 font-medium">Patient</th>
+                <th className="p-3 font-medium">Client</th>
+                <th className="p-3 font-medium">Professional type</th>
                 <th className="p-3 font-medium">Type</th>
                 <th className="p-3 font-medium">Payment</th>
                 <th className="p-3 font-medium">Status</th>
@@ -106,12 +109,23 @@ export default function AdminSessionsPage() {
                   <td className="p-3">
                     {b.startTime}–{b.endTime} WAT
                   </td>
-                  <td className="p-3">{b.therapist.profile.fullName}</td>
+                  <td className="p-3">
+                    {therapistPublicLabel(b.therapist.profile.fullName)}
+                  </td>
                   <td className="p-3">
                     {b.patient?.fullName ?? "—"}{" "}
                     <span className="text-muted-foreground text-xs">
                       {b.patient?.email}
                     </span>
+                  </td>
+                  <td className="p-3">
+                    {b.professionalType ? (
+                      <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                        {b.professionalType}
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
                   </td>
                   <td className="p-3 capitalize">{b.sessionType}</td>
                   <td className="p-3">

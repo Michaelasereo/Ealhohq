@@ -206,7 +206,7 @@ export default function TherapistSettingsPage() {
       <Card>
         <CardHeader>
           <CardTitle>Profile</CardTitle>
-          <CardDescription>Photo and contact shown to patients.</CardDescription>
+          <CardDescription>Photo and contact shown to clients.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <ProfilePhotoUpload currentPhoto={data.profilePhoto} />

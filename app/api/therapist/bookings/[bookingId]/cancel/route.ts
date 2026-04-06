@@ -1,12 +1,16 @@
 import { NextResponse } from "next/server";
 
+import { performSessionCancellation } from "@/lib/cancellation/perform-cancellation";
+import { sendSessionCancelledWhatsApp } from "@/lib/cancellation/send-cancelled-whatsapp";
 import { getTherapistByProfileId } from "@/lib/queries/patient";
 import { createClient } from "@/lib/supabase/server";
-import { prisma } from "@/lib/prisma/client";
-import { minutesUntilSessionStart } from "@/lib/session/join-access";
 
 type Ctx = { params: Promise<{ bookingId: string }> };
 
+/**
+ * @deprecated Prefer POST /api/sessions/cancel with cancelledBy: "therapist".
+ * Delegates to the same server-side cancellation policy (refunds, credits, session row).
+ */
 export async function PATCH(req: Request, ctx: Ctx) {
   try {
     const { bookingId } = await ctx.params;
@@ -24,40 +28,36 @@ export async function PATCH(req: Request, ctx: Ctx) {
     }
 
     const body = (await req.json().catch(() => ({}))) as {
-      leadMinutes?: number;
+      reason?: string;
     };
-    const leadMinutes = body.leadMinutes ?? 1440;
 
-    const booking = await prisma.therapyBooking.findFirst({
-      where: { id: bookingId, therapistId: therapist.id },
+    const result = await performSessionCancellation({
+      bookingId,
+      cancelledBy: "therapist",
+      reason: body.reason ?? null,
+      therapistProfileId: user.id,
     });
 
-    if (!booking) {
-      return NextResponse.json({ error: "Booking not found" }, { status: 404 });
-    }
-
-    if (booking.status === "cancelled") {
-      return NextResponse.json({ error: "Already cancelled" }, { status: 400 });
-    }
-
-    const mins = minutesUntilSessionStart(booking.date, booking.startTime);
-    if (mins < leadMinutes) {
+    if (!result.ok) {
       return NextResponse.json(
-        {
-          error: `Cancellation requires at least ${leadMinutes} minutes before start`,
-        },
-        { status: 400 },
+        { success: false, error: result.error },
+        { status: result.status },
       );
     }
 
-    await prisma.therapyBooking.update({
-      where: { id: booking.id },
-      data: { status: "cancelled" },
-    });
+    sendSessionCancelledWhatsApp(bookingId);
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({
+      success: true,
+      data: {
+        refundType: result.policy.refundType,
+        refundCredits: result.policy.refundCredits,
+        bonusCredits: result.policy.bonusCredits,
+        message: result.policy.message,
+      },
+    });
   } catch (e) {
-    console.error("booking cancel PATCH:", e);
+    console.error("therapist booking cancel PATCH:", e);
     return NextResponse.json({ error: "Failed to cancel" }, { status: 500 });
   }
 }
