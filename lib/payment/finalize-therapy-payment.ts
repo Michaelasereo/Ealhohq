@@ -10,10 +10,10 @@ import { chargeSessionRateNgn } from "@/lib/referral/pricing";
 
 const TX_OPTS = { timeout: 10_000 } as const;
 
+/** Therapist + patient for confirmations; omit `package` so Prisma does not require `packageId` / package tables on older DBs. */
 const bookingInclude = {
   therapist: { include: { profile: true } },
   patient: true,
-  package: true,
 } as const;
 
 /**
@@ -75,28 +75,53 @@ export async function finalizeTherapyPayment(
     },
   });
 
-  if (packageOption.id !== "single" && booking.patientId) {
-    const pricing = calculatePackagePrice(chargeSessionRateNgn(booking), packageOption);
-    const createdPackage = await prisma.therapySessionPackage.create({
-      data: {
-        patientId: booking.patientId,
-        therapistId: booking.therapistId,
-        packageType: packageOption.id,
-        totalSessions: packageOption.sessions,
-        usedSessions: 1,
-        remainingSessions: Math.max(0, packageOption.sessions - 1),
-        pricePerSession: new Prisma.Decimal(String(pricing.pricePerSession)),
-        totalPaid: new Prisma.Decimal(String(pricing.finalPrice)),
-        discountPercent: packageOption.discountPercent,
-        paystackReference,
-        status: "active",
-        expiresAt: getPackageExpiry(),
-      },
-    });
-    await prisma.therapyBooking.update({
-      where: { id: booking.id },
-      data: { packageId: createdPackage.id },
-    });
+  if (booking.patientId) {
+    const rate = chargeSessionRateNgn(booking);
+    if (packageOption.id === "single") {
+      const pricing = calculatePackagePrice(rate, packageOption);
+      const createdPackage = await prisma.therapySessionPackage.create({
+        data: {
+          patientId: booking.patientId,
+          therapistId: booking.therapistId,
+          packageType: packageOption.id,
+          totalSessions: 1,
+          usedSessions: 1,
+          remainingSessions: 0,
+          pricePerSession: new Prisma.Decimal(String(pricing.pricePerSession)),
+          totalPaid: new Prisma.Decimal(String(pricing.finalPrice)),
+          discountPercent: packageOption.discountPercent,
+          paystackReference,
+          status: "exhausted",
+          expiresAt: getPackageExpiry("single"),
+        },
+      });
+      await prisma.therapyBooking.update({
+        where: { id: booking.id },
+        data: { packageId: createdPackage.id },
+      });
+    } else {
+      const pricing = calculatePackagePrice(rate, packageOption);
+      const createdPackage = await prisma.therapySessionPackage.create({
+        data: {
+          patientId: booking.patientId,
+          therapistId: booking.therapistId,
+          packageType: packageOption.id,
+          totalSessions: packageOption.sessions,
+          usedSessions: 1,
+          remainingSessions: Math.max(0, packageOption.sessions - 1),
+          pricePerSession: new Prisma.Decimal(String(pricing.pricePerSession)),
+          totalPaid: new Prisma.Decimal(String(pricing.finalPrice)),
+          discountPercent: packageOption.discountPercent,
+          paystackReference,
+          status: "active",
+          expiresAt: getPackageExpiry(packageOption.id),
+        },
+      });
+      await prisma.therapyBooking.update({
+        where: { id: booking.id },
+        data: { packageId: createdPackage.id },
+      });
+    }
   }
 
   return {

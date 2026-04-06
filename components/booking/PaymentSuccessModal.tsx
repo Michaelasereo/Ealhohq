@@ -20,6 +20,8 @@ type BookingDetail = {
   therapistPhoto?: string;
   guestEmail?: string | null;
   isAnonymous?: boolean;
+  /** Confirmed + completed bookings for this patient (includes current). */
+  guestSessionCount?: number;
 };
 
 type VerifyPayload = { booking: BookingDetail };
@@ -82,6 +84,7 @@ export function PaymentSuccessModal() {
           setBooking({
             ...j.data.booking,
             therapistPhoto: j.data.booking.therapistPhoto ?? "/Ealho-logo.png",
+            guestSessionCount: j.data.booking.guestSessionCount,
           });
           setState("success");
           resetDraft();
@@ -131,6 +134,8 @@ export function PaymentSuccessModal() {
 
   const emailForSignup = booking?.guestEmail?.trim() ?? "";
   const signupHref = `/signup?email=${encodeURIComponent(emailForSignup)}`;
+  const sessionCount = booking?.guestSessionCount ?? 1;
+  const isReturningGuest = sessionCount > 1;
 
   return (
     <div className="w-full max-w-md overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-2xl">
@@ -159,8 +164,8 @@ export function PaymentSuccessModal() {
 
         {state === "success" && booking && (
           <div className="text-center">
-            <div className="mx-auto mb-5 flex size-16 items-center justify-center rounded-full bg-green-50">
-              <Check size={28} strokeWidth={2} className="text-green-600" />
+            <div className="mx-auto mb-5 flex size-16 items-center justify-center rounded-full bg-primary/10">
+              <Check size={28} strokeWidth={2} className="text-primary" />
             </div>
 
             <h2 className="mb-1 text-xl font-bold text-gray-900">
@@ -197,15 +202,21 @@ export function PaymentSuccessModal() {
             </div>
 
             <div className="mb-5 rounded-xl bg-primary/5 p-4 text-left">
-              <p className="mb-1 text-sm font-semibold text-gray-900">Save time next time</p>
+              <p className="mb-1 text-sm font-semibold text-gray-900">
+                {isReturningGuest
+                  ? "All your sessions in one place"
+                  : "Save time next time"}
+              </p>
               <p className="mb-3 text-xs text-gray-500">
-                Create a free account to rebook in seconds, track your sessions, and earn credits.
+                {isReturningGuest
+                  ? `You've had ${sessionCount} sessions with us. Create an account to see your full history and manage everything easily.`
+                  : "Create a free account to rebook in seconds, track your sessions, and earn credits."}
               </p>
               <Link
                 href={emailForSignup ? signupHref : "/signup"}
                 className="block w-full rounded-lg bg-primary py-2.5 text-center text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
               >
-                Create Free Account
+                {isReturningGuest ? "Link My Sessions →" : "Create Free Account"}
               </Link>
             </div>
 
@@ -231,10 +242,10 @@ export function PaymentSuccessModal() {
                 "If you were charged, please contact us and we will resolve it immediately."}
             </p>
             <a
-              href="mailto:hello@ealhohq.com"
+              href="mailto:hello@ealho.com"
               className="text-sm font-medium text-primary underline"
             >
-              hello@ealhohq.com
+              hello@ealho.com
             </a>
           </div>
         )}

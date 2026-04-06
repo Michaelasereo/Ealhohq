@@ -338,15 +338,8 @@ export default function TherapistDashboardPage() {
             <h2 className="text-lg font-semibold">Rebooking invitations</h2>
           </div>
           <p className="text-sm text-muted-foreground">
-            Suggested follow-up times waiting for a client response — not the same
-            as secure chat. To message a client, open their profile from{" "}
-            <Link
-              href="/therapist/clients"
-              className="font-medium text-primary underline-offset-2 hover:underline"
-            >
-              Clients
-            </Link>{" "}
-            and use <span className="font-medium text-foreground">Message client</span>.
+            Rebook invites are suggested session times waiting for client response.
+            No extra messages for now.
           </p>
         </div>
         {pendingLoading ? (
@@ -358,9 +351,8 @@ export default function TherapistDashboardPage() {
         ) : pendingRebooks.length === 0 ? (
           <Card>
             <CardContent className="py-6 text-center text-sm text-muted-foreground">
-              No pending rebooking invitations. Send a suggested time from a
-              client&apos;s profile or after a session. To chat, open a client and
-              tap Message client.
+              No pending rebook invitations. Send one from a client profile or
+              after a session.
             </CardContent>
           </Card>
         ) : (

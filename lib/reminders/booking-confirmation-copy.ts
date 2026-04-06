@@ -5,12 +5,12 @@ export const BOOKING_SIGNUP_WHATSAPP_FOOTER = `
 
 💡 *Want to manage your sessions easily?*
 Create a free Ealho account at:
-ealhohq.com/signup
+ealho.com/signup
 
 Save time on your next booking and earn credits for multiple sessions.`;
 
 export function signupUrlWithEmail(email: string | null | undefined): string {
-  const base = appBaseUrl() || "https://ealhohq.com";
+  const base = appBaseUrl() || "https://ealho.com";
   const u = new URL("/signup", base.endsWith("/") ? base : `${base}/`);
   const e = email?.trim();
   if (e) u.searchParams.set("email", e);

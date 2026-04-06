@@ -116,7 +116,7 @@ export function RebookInviteForm({
       if (ctx?.toastId) toast.dismiss(ctx.toastId);
       toast.success("Invitation sent! ✅");
       setDoneMsg(
-        `Invitation sent to ${patientName}. They have 7 days to confirm and pay. You will be notified when they respond.`,
+        `Rebook invitation sent to ${patientName}. They have 7 days to confirm and pay. We will notify you when they respond.`,
       );
       onSent?.();
     },
@@ -139,8 +139,8 @@ export function RebookInviteForm({
       <div>
         <h2 className="text-lg font-semibold">{title}</h2>
         <p className="text-sm text-muted-foreground">
-          {patientName}&apos;s next session — pick a slot in the next two weeks
-          (WAT).
+          Send a rebook invitation for {patientName}. Choose a date and time in
+          the next two weeks (WAT).
         </p>
       </div>
 
@@ -219,15 +219,18 @@ export function RebookInviteForm({
           </div>
 
           <div>
-            <Label htmlFor="rb-msg">Message to client (optional)</Label>
+            <Label htmlFor="rb-msg">Optional note for this invitation</Label>
             <textarea
               id="rb-msg"
               rows={3}
               value={message}
               onChange={(e) => setMessage(e.target.value)}
-              placeholder="e.g. Great session today. Looking forward to continuing next week."
+              placeholder="No extra message needed for now."
               className="mt-1 w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm"
             />
+            <p className="mt-1 text-xs text-muted-foreground">
+              Leave this blank if you don&apos;t want to add a message right now.
+            </p>
           </div>
 
           {sendMut.isError ? (
@@ -244,7 +247,7 @@ export function RebookInviteForm({
             disabled={!selectedYmd || !selectedTime || sendMut.isPending}
             onClick={() => sendMut.mutate()}
           >
-            {sendMut.isPending ? "Sending…" : "Send session invitation"}
+            {sendMut.isPending ? "Sending…" : "Send rebook invitation"}
           </Button>
         </>
       )}

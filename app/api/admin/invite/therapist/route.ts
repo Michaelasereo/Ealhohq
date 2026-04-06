@@ -125,7 +125,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const base = appBaseUrl() || "https://ealhohq.com";
+    const base = appBaseUrl() || "https://ealho.com";
     const setupLink = `${base.replace(/\/$/, "")}/auth/setup?email=${encodeURIComponent(email)}&code=${inviteCode}&role=therapist`;
 
     const first = fullName.split(/\s+/)[0] ?? fullName;

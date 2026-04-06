@@ -55,7 +55,7 @@ export async function GET() {
     }
 
     if (role === "patient") {
-      const patient = await ensureRegisteredPatientForUser(user);
+      const patient = (await ensureRegisteredPatientForUser(user))?.patient ?? null;
       if (!patient) {
         return NextResponse.json({ success: true, data: { threads: [] } });
       }
@@ -199,7 +199,7 @@ export async function POST(req: Request) {
       }
       const { therapistId } = parsed.data;
 
-      const patient = await ensureRegisteredPatientForUser(user);
+      const patient = (await ensureRegisteredPatientForUser(user))?.patient ?? null;
       if (!patient) {
         return NextResponse.json({ error: "Client profile required" }, { status: 403 });
       }
@@ -218,6 +218,7 @@ export async function POST(req: Request) {
           therapistId,
           status: { in: ["confirmed", "completed"] },
         },
+        select: { id: true },
       });
       if (!booking) {
         return NextResponse.json(
@@ -295,6 +296,7 @@ export async function POST(req: Request) {
           therapistId: therapist.id,
           status: { in: ["confirmed", "completed"] },
         },
+        select: { id: true },
       });
       if (!booking) {
         return NextResponse.json(

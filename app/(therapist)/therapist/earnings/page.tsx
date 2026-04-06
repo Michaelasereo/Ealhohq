@@ -66,8 +66,7 @@ export default function TherapistEarningsPage() {
     );
   }
 
-  const { totals, sessions, therapistPercent, platformPercent, sessionRate } =
-    data;
+  const { totals, sessions, sessionRate } = data;
 
   if (sessions.length === 0) {
     return (
@@ -78,9 +77,6 @@ export default function TherapistEarningsPage() {
             Your share of paid, completed sessions (NGN).
           </p>
         </header>
-        <span className="inline-flex rounded-full bg-muted px-3 py-1 text-xs font-medium">
-          Your rate: {therapistPercent}% per session · Platform {platformPercent}%
-        </span>
         <Card>
           <CardContent className="flex flex-col items-center gap-4 py-14 text-center">
             <DollarSign className="size-12 text-gray-300" strokeWidth={1.5} />
@@ -111,9 +107,6 @@ export default function TherapistEarningsPage() {
           List price ₦{sessionRate.toLocaleString("en-NG")} — amounts below are
           your share only (WAT dates).
         </p>
-        <span className="inline-flex rounded-full bg-muted px-3 py-1 text-xs font-medium">
-          Your rate: {therapistPercent}% per session · Platform {platformPercent}%
-        </span>
       </header>
 
       <div className="grid gap-3 sm:grid-cols-3">

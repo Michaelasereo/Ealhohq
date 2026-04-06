@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { resolveAppRole } from "@/lib/auth/resolve-app-role";
-import { getPatientByProfileId } from "@/lib/queries/patient";
+import { ensureRegisteredPatientForUser } from "@/lib/queries/patient";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma/client";
 import { therapistPublicLabel } from "@/lib/therapist-display-name";
@@ -33,7 +33,7 @@ export async function GET() {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const patient = await getPatientByProfileId(user.id);
+    const patient = (await ensureRegisteredPatientForUser(user))?.patient ?? null;
     if (!patient) {
       return NextResponse.json({
         success: true,

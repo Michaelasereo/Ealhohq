@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { tierFromBalance } from "@/lib/credits/purchase-config";
-import { getPatientByProfileId } from "@/lib/queries/patient";
+import { ensureRegisteredPatientForUser } from "@/lib/queries/patient";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma/client";
 import { therapistPublicLabel } from "@/lib/therapist-display-name";
@@ -12,6 +12,28 @@ function firstName(fullName: string) {
   const t = fullName.trim();
   return t.split(/\s+/)[0] ?? t;
 }
+
+const patientDashboardBookingSelect = {
+  id: true,
+  date: true,
+  startTime: true,
+  endTime: true,
+  sessionType: true,
+  therapist: {
+    select: {
+      id: true,
+      profilePhoto: true,
+      profile: { select: { fullName: true } },
+    },
+  },
+  session: {
+    select: {
+      id: true,
+      sessionNumber: true,
+      feedbacks: { select: { id: true }, take: 1 },
+    },
+  },
+} as const;
 
 function toSessionJson(b: {
   id: string;
@@ -66,20 +88,31 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const profileBefore = await prisma.sharedProfile.findUnique({
+      where: { id: user.id },
+    });
+
+    const patient = (await ensureRegisteredPatientForUser(user))?.patient ?? null;
+
     const profile = await prisma.sharedProfile.findUnique({
       where: { id: user.id },
     });
 
-    const patient = await getPatientByProfileId(user.id);
+    const mergedFromGuest = Boolean(
+      profile?.guestMergeBannerPending && !profile?.guestMergeCompleted,
+    );
+    const mergedSessionCount = profile?.guestMergeSessionCount ?? 0;
 
     if (!patient) {
       const empty = {
-        profile: { fullName: profile?.fullName ?? "" },
-        firstName: profile ? firstName(profile.fullName) : "there",
+        profile: { fullName: profileBefore?.fullName ?? "" },
+        firstName: profileBefore ? firstName(profileBefore.fullName) : "there",
         upcomingSession: null,
         recentSessions: [] as ReturnType<typeof toSessionJson>[],
         credits: { balance: 0, tier: tierFromBalance(0) },
         totalSessions: 0,
+        mergedFromGuest,
+        mergedSessionCount,
       };
       if (zone === "stats") {
         return NextResponse.json({
@@ -88,6 +121,8 @@ export async function GET(req: Request) {
             firstName: empty.firstName,
             totalSessions: 0,
             credits: empty.credits,
+            mergedFromGuest,
+            mergedSessionCount,
           },
         });
       }
@@ -128,6 +163,8 @@ export async function GET(req: Request) {
           ),
           totalSessions,
           credits: { balance, tier: tierFromBalance(balance) },
+          mergedFromGuest,
+          mergedSessionCount,
         },
       });
     }
@@ -139,16 +176,7 @@ export async function GET(req: Request) {
           status: "confirmed",
           date: { gte: todayStart },
         },
-        include: {
-          therapist: { include: { profile: { select: { fullName: true } } } },
-          session: {
-            select: {
-              id: true,
-              sessionNumber: true,
-              feedbacks: { select: { id: true }, take: 1 },
-            },
-          },
-        },
+        select: patientDashboardBookingSelect,
         orderBy: [{ date: "asc" }, { startTime: "asc" }],
         take: 20,
       });
@@ -180,16 +208,7 @@ export async function GET(req: Request) {
         },
         orderBy: [{ date: "desc" }, { startTime: "desc" }],
         take: 3,
-        include: {
-          therapist: { include: { profile: { select: { fullName: true } } } },
-          session: {
-            select: {
-              id: true,
-              sessionNumber: true,
-              feedbacks: { select: { id: true }, take: 1 },
-            },
-          },
-        },
+        select: patientDashboardBookingSelect,
       });
       return NextResponse.json({
         success: true,
@@ -205,16 +224,7 @@ export async function GET(req: Request) {
         status: "confirmed",
         date: { gte: todayStart },
       },
-      include: {
-        therapist: { include: { profile: { select: { fullName: true } } } },
-        session: {
-          select: {
-            id: true,
-            sessionNumber: true,
-            feedbacks: { select: { id: true }, take: 1 },
-          },
-        },
-      },
+      select: patientDashboardBookingSelect,
       orderBy: [{ date: "asc" }, { startTime: "asc" }],
       take: 20,
     });
@@ -237,16 +247,7 @@ export async function GET(req: Request) {
       },
       orderBy: [{ date: "desc" }, { startTime: "desc" }],
       take: 3,
-      include: {
-        therapist: { include: { profile: { select: { fullName: true } } } },
-        session: {
-          select: {
-            id: true,
-            sessionNumber: true,
-            feedbacks: { select: { id: true }, take: 1 },
-          },
-        },
-      },
+      select: patientDashboardBookingSelect,
     });
 
     const totalSessions = await prisma.therapyBooking.count({
@@ -275,6 +276,8 @@ export async function GET(req: Request) {
           tier: tierFromBalance(balance),
         },
         totalSessions,
+        mergedFromGuest,
+        mergedSessionCount,
       },
     });
   } catch (e) {

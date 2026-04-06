@@ -1,6 +1,7 @@
 "use client";
 
 import { Clock } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -20,15 +21,15 @@ import { cn } from "@/lib/utils";
 function EalhoMark() {
   return (
     <div className="mb-6 flex justify-center">
-      <svg width="40" height="40" viewBox="0 0 28 28" fill="none" aria-hidden>
-        <rect width="28" height="28" rx="8" fill="#292612" />
-        <path
-          d="M7 14h14M7 9h8M7 19h10"
-          stroke="white"
-          strokeWidth="2"
-          strokeLinecap="round"
-        />
-      </svg>
+      <Image
+        src="/Ealho-logo.svg"
+        alt="Ealho"
+        width={138}
+        height={50}
+        priority
+        className="h-10 w-auto sm:h-11"
+        style={{ width: "auto", height: "auto" }}
+      />
     </div>
   );
 }
@@ -48,6 +49,15 @@ export default function TherapistPendingPage() {
       const { data } = await supabase.auth.getUser();
       const u = data.user;
       if (!u || cancelled) return;
+      const status = u.app_metadata?.status as string | undefined;
+      if (status === "approved") {
+        router.replace("/therapist/dashboard");
+        return;
+      }
+      if (status === "rejected") {
+        router.replace("/therapist/login");
+        return;
+      }
       const meta = u.user_metadata as Record<string, unknown> | undefined;
       const name =
         (typeof meta?.full_name === "string" && meta.full_name) ||
@@ -114,9 +124,9 @@ export default function TherapistPendingPage() {
             Questions?{" "}
             <a
               className="font-medium text-primary underline"
-              href="mailto:hello@ealhohq.com"
+              href="mailto:hello@ealho.com"
             >
-              hello@ealhohq.com
+              hello@ealho.com
             </a>
           </p>
           <div className="flex flex-col gap-2 pt-2 sm:flex-row sm:items-center">

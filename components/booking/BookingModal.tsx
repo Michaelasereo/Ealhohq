@@ -28,6 +28,8 @@ export interface BookingData {
   date: string;
   startTime: string;
   bookingId: string;
+  /** Matches `lib/packages/config` ids: single | package_4 | package_6 | package_8 */
+  selectedPackage: string;
 }
 
 export const EMPTY_BOOKING: BookingData = {
@@ -48,6 +50,7 @@ export const EMPTY_BOOKING: BookingData = {
   date: "",
   startTime: "",
   bookingId: "",
+  selectedPackage: "single",
 };
 
 const STEP_LABELS = ["About you", "Your therapist", "Date & time"] as const;

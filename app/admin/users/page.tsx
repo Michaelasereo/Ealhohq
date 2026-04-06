@@ -84,7 +84,9 @@ export default function AdminPatientsPage() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Clients</h1>
           <p className="text-muted-foreground text-sm">
-            Accounts, credits, and session counts.
+            Accounts, credits, and session counts. Use{" "}
+            <span className="font-medium text-foreground">Add credits</span> to
+            grant session credit balance to a client.
           </p>
         </div>
         <Button

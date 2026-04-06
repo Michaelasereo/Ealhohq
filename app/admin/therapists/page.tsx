@@ -30,6 +30,7 @@ type TherapistRow = {
   bio: string | null;
   specializations: string[];
   qualifications: string[];
+  profilePhoto: string | null;
   sessionRate: number;
   sessionDuration: number;
   createdAt: string;
@@ -267,13 +268,13 @@ export default function AdminTherapistsPage() {
                   </p>
                   <button
                     type="button"
-                    className="mr-3 inline-flex items-center gap-1 text-primary underline"
+                    className="mr-3 inline-flex min-h-11 items-center gap-1 rounded-md border border-primary px-3 text-sm font-medium text-primary hover:bg-primary/5"
                     onClick={() => {
                       setDetailTherapist(t);
                       setDetailOpen(true);
                     }}
                   >
-                    Profile
+                    View application
                   </button>
                   <button
                     type="button"
@@ -350,6 +351,16 @@ export default function AdminTherapistsPage() {
             prev ? { ...prev, ...partial } : null,
           )
         }
+        onApprovePending={
+          detailTherapist?.status === "pending"
+            ? () =>
+                approveM.mutateAsync(detailTherapist.id).then(() => {
+                  setDetailOpen(false);
+                  setDetailTherapist(null);
+                })
+            : undefined
+        }
+        isApprovingPending={approveM.isPending}
       />
 
       <InviteTherapistModal

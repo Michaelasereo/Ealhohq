@@ -345,7 +345,7 @@ export function QuickRebookModal({
               </div>
 
               {activePackage ? (
-                <div className="rounded-xl border border-[#1A7A4A]/30 bg-[#F0FAF4] p-3 text-sm">
+                <div className="rounded-xl border border-primary/30 bg-primary/10 p-3 text-sm">
                   <p className="font-medium">🎟 Use Package Credit</p>
                   <p className="mt-1 text-muted-foreground">
                     You have {activePackage.remainingSessions} session
@@ -358,7 +358,8 @@ export function QuickRebookModal({
                       variant={usePackageCredit ? "default" : "outline"}
                       className={cn(
                         "min-h-11 flex-1",
-                        usePackageCredit && "bg-[#1A7A4A] text-white hover:bg-[#1A7A4A]/90",
+                        usePackageCredit &&
+                          "bg-primary text-primary-foreground hover:bg-primary/90",
                       )}
                       disabled={busy}
                       onClick={() => setUsePackageCredit(true)}

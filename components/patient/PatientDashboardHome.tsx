@@ -1,9 +1,9 @@
 "use client";
 
 import Image from "next/image";
-import { Calendar } from "lucide-react";
+import { Calendar, CheckCircle, X } from "lucide-react";
 import Link from "next/link";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { LoadingWithCopy } from "@/components/shared/LoadingWithCopy";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -125,6 +125,8 @@ type StatsZone = {
   firstName: string;
   totalSessions: number;
   credits: { balance: number; tier: string };
+  mergedFromGuest?: boolean;
+  mergedSessionCount?: number;
 };
 
 type NextZone = { upcomingSession: DashboardData["upcomingSession"] };
@@ -181,6 +183,7 @@ export interface PatientDashboardHomeProps {
 }
 
 export function PatientDashboardHome({ onBookSession }: PatientDashboardHomeProps) {
+  const queryClient = useQueryClient();
   const statsQ = useQuery({
     queryKey: ["patient-dashboard", "stats"],
     queryFn: fetchStatsZone,
@@ -236,6 +239,16 @@ export function PatientDashboardHome({ onBookSession }: PatientDashboardHomeProp
     bookingDate &&
     canJoinSessionTenMinutesBefore(bookingDate, up.startTime);
 
+  const mergedCount = data.mergedSessionCount ?? 0;
+
+  async function dismissMergeBanner() {
+    await fetch("/api/patient/merge-banner/dismiss", {
+      method: "POST",
+      credentials: "include",
+    });
+    await queryClient.invalidateQueries({ queryKey: ["patient-dashboard", "stats"] });
+  }
+
   return (
     <main className="mx-auto w-full max-w-lg space-y-8 p-4 pb-24 md:pb-8">
       <header>
@@ -246,6 +259,41 @@ export function PatientDashboardHome({ onBookSession }: PatientDashboardHomeProp
           Welcome back to your wellness journey.
         </p>
       </header>
+
+      {data.mergedFromGuest && (
+        <div className="flex items-start gap-3 rounded-2xl border border-green-200 bg-green-50 p-4">
+          <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-green-100">
+            <CheckCircle size={16} strokeWidth={1.5} className="text-green-600" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="mb-0.5 text-sm font-semibold text-green-900">
+              Your session history has been linked
+            </p>
+            <p className="text-xs text-green-700">
+              {mergedCount > 0 ? (
+                <>
+                  Your previous {mergedCount} session
+                  {mergedCount !== 1 ? "s" : ""} are now connected to your account. You can
+                  manage everything from here.
+                </>
+              ) : (
+                <>
+                  Your guest bookings are now connected to your account. You can manage
+                  everything from here.
+                </>
+              )}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => void dismissMergeBanner()}
+            className="shrink-0 text-green-500 hover:text-green-700"
+            aria-label="Dismiss"
+          >
+            <X size={14} strokeWidth={2} />
+          </button>
+        </div>
+      )}
 
       {nextQ.isPending ? (
         <Skeleton className="h-56 w-full rounded-2xl" />
@@ -321,7 +369,7 @@ export function PatientDashboardHome({ onBookSession }: PatientDashboardHomeProp
                       title: `Therapy — ${up.therapist.name}`,
                       startIso,
                       endIso,
-                      uid: `ealho-booking-${up.id}@ealhohq.com`,
+                      uid: `ealho-booking-${up.id}@ealho.com`,
                     }),
                     "ealho-session.ics",
                   );

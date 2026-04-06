@@ -35,6 +35,10 @@ export default function TestSessionPage() {
   const [waErr, setWaErr] = useState<string | null>(null);
   const [waResult, setWaResult] = useState<string | null>(null);
 
+  const [reminderLoading, setReminderLoading] = useState(false);
+  const [reminderResult, setReminderResult] = useState<string | null>(null);
+  const [reminderErr, setReminderErr] = useState<string | null>(null);
+
   const appId = process.env.NEXT_PUBLIC_AGORA_APP_ID ?? "";
 
   const handleJoin = useCallback(async () => {
@@ -97,6 +101,29 @@ export default function TestSessionPage() {
       setWaLoading(false);
     }
   }, [waMessage, waPhone]);
+
+  const runTestReminders = useCallback(async () => {
+    setReminderErr(null);
+    setReminderResult(null);
+    setReminderLoading(true);
+    try {
+      const res = await fetch("/api/test/send-reminders", { method: "POST" });
+      const data = (await res.json()) as {
+        success?: boolean;
+        data?: { sent24h?: number; sent6h?: number };
+        error?: string;
+      };
+      if (!res.ok) {
+        setReminderErr(data.error ?? `HTTP ${res.status}`);
+        return;
+      }
+      setReminderResult(JSON.stringify(data, null, 2));
+    } catch (e) {
+      setReminderErr(e instanceof Error ? e.message : "Request failed");
+    } finally {
+      setReminderLoading(false);
+    }
+  }, []);
 
   function handleSessionEnd(t: string) {
     setTranscript(t);
@@ -251,6 +278,34 @@ export default function TestSessionPage() {
               {waLoading ? "Sending…" : "Send test message"}
             </Button>
           </div>
+        </div>
+
+        <div className="w-full max-w-md rounded-2xl border border-border bg-card p-8 shadow-sm">
+          <h2 className="mb-2 text-xl font-bold text-foreground">
+            Session email reminders
+          </h2>
+          <p className="mb-6 text-sm text-muted-foreground">
+            Dev-only: runs <code className="text-xs">sendSessionReminders</code>. Emails
+            send only when a confirmed booking falls in the 24h or 6h window.
+          </p>
+          {reminderErr ? (
+            <p className="mb-3 text-sm text-destructive" role="alert">
+              {reminderErr}
+            </p>
+          ) : null}
+          {reminderResult ? (
+            <pre className="mb-4 max-h-40 overflow-auto rounded-lg bg-muted p-3 text-xs">
+              {reminderResult}
+            </pre>
+          ) : null}
+          <Button
+            type="button"
+            className="min-h-12 w-full"
+            disabled={reminderLoading}
+            onClick={() => void runTestReminders()}
+          >
+            {reminderLoading ? "Running…" : "Test Reminders"}
+          </Button>
         </div>
       </div>
     );

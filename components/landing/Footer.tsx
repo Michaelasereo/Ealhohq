@@ -41,6 +41,7 @@ export function Footer() {
                 width={40}
                 height={40}
                 className="h-10 w-auto brightness-0 invert"
+                style={{ width: "auto", height: "auto" }}
               />
             </div>
             <p className="mt-4 text-[15px] leading-relaxed sm:text-[16px]">
@@ -122,8 +123,8 @@ export function Footer() {
                 Contact
               </p>
               <ul className="mt-4 space-y-3 text-[15px]">
-                <li>hello@ealhohq.com</li>
-                <li>privacy@ealhohq.com</li>
+                <li>hello@ealho.com</li>
+                <li>privacy@ealho.com</li>
                 <li>Lagos, Nigeria</li>
               </ul>
             </div>

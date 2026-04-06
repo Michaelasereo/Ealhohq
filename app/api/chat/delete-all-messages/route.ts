@@ -49,7 +49,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Invalid body" }, { status: 400 });
     }
 
-    const patient = await ensureRegisteredPatientForUser(user);
+    const patient = (await ensureRegisteredPatientForUser(user))?.patient ?? null;
     if (!patient) {
       return NextResponse.json(
         { error: "Client profile required" },

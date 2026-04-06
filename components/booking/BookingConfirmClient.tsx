@@ -308,7 +308,7 @@ export function BookingConfirmClient({ listHref }: Props) {
       </label>
 
       {packageQ.data ? (
-        <div className="rounded-xl border border-[#1A7A4A]/30 bg-[#F0FAF4] p-3 text-sm">
+        <div className="rounded-xl border border-primary/30 bg-primary/5 p-3 text-sm">
           <p className="font-medium">🎟 Use Package Credit</p>
           <p className="mt-1 text-muted-foreground">
             You have {packageQ.data.remainingSessions} session
@@ -322,7 +322,7 @@ export function BookingConfirmClient({ listHref }: Props) {
               className={cn(
                 "min-h-11 flex-1",
                 paymentMode === "package" &&
-                  "bg-[#1A7A4A] text-white hover:bg-[#1A7A4A]/90",
+                  "bg-primary text-primary-foreground hover:bg-primary/90",
               )}
               disabled={busy}
               onClick={() => setPaymentMode("package")}

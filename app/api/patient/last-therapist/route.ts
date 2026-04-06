@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { collectNextAvailableSlots } from "@/lib/availability/next-slots";
 import { enrichSlotsForQuickRebook } from "@/lib/booking/quick-rebook-display";
-import { getPatientByProfileId } from "@/lib/queries/patient";
+import { ensureRegisteredPatientForUser } from "@/lib/queries/patient";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma/client";
 import { therapistPublicLabel } from "@/lib/therapist-display-name";
@@ -21,7 +21,7 @@ export async function GET() {
       );
     }
 
-    const patient = await getPatientByProfileId(user.id);
+    const patient = (await ensureRegisteredPatientForUser(user))?.patient ?? null;
     if (!patient) {
       return NextResponse.json({
         success: true,

@@ -6,7 +6,7 @@ import {
   loadBookingForNotify,
   notifyRebookBookingConfirmed,
 } from "@/lib/rebooking/notify-confirmed";
-import { getPatientByProfileId } from "@/lib/queries/patient";
+import { ensureRegisteredPatientForUser } from "@/lib/queries/patient";
 import { finalizeTherapyPaymentWithCredits } from "@/lib/payment/finalize-therapy-payment";
 import { getPackageOption } from "@/lib/packages/config";
 import { prisma } from "@/lib/prisma/client";
@@ -55,7 +55,7 @@ export async function POST(req: Request) {
       parsed.data;
     const packageType = getPackageOption(rawPackageType ?? "single").id;
 
-    const patient = await getPatientByProfileId(user.id);
+    const patient = (await ensureRegisteredPatientForUser(user))?.patient ?? null;
     if (!patient) {
       return NextResponse.json(
         { success: false, error: "Patient profile not found" },

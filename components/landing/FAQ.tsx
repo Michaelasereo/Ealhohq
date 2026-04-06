@@ -70,7 +70,7 @@ const faqByTab = {
     },
     {
       q: "Can I use insurance?",
-      a: "We are working with Nigerian HMO providers to enable insurance coverage. This is currently available for select corporate partners. Contact us at hello@ealhohq.com for details.",
+      a: "We are working with Nigerian HMO providers to enable insurance coverage. This is currently available for select corporate partners. Contact us at hello@ealho.com for details.",
     },
     {
       q: "What is the standard session rate?",

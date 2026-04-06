@@ -186,6 +186,16 @@ export async function POST(req: Request) {
       await sendTherapyBookingPaidNotifications(booking);
     }
 
+    let guestSessionCount = 0;
+    if (booking.patientId) {
+      guestSessionCount = await prisma.therapyBooking.count({
+        where: {
+          patientId: booking.patientId,
+          status: { in: ["confirmed", "completed"] },
+        },
+      });
+    }
+
     return NextResponse.json({
       success: true,
       data: {
@@ -202,6 +212,7 @@ export async function POST(req: Request) {
           sessionType: booking.sessionType,
           isAnonymous: booking.isAnonymous,
           guestEmail: booking.guestEmail ?? booking.patient?.email ?? null,
+          guestSessionCount,
         },
         sessionId,
       },

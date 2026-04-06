@@ -29,9 +29,9 @@ Create **five Test issues** in Jira (one per ID below) or use this page as a **s
 | Step | Action | Expected |
 |------|--------|----------|
 | 1 | Open `/login` | Login page loads |
-| 2 | Log in as client (`patient@ealhohq.com`) | Redirect to `/dashboard` (or intended post-login URL) |
-| 3 | Sign out; log in as `therapist1@ealhohq.com` | Redirect to `/therapist/dashboard` |
-| 4 | Sign out; log in as `admin@ealhohq.com` via `/admin/login` if applicable | Access to admin area (`/admin/dashboard`) |
+| 2 | Log in as client (`patient@ealho.com`) | Redirect to `/dashboard` (or intended post-login URL) |
+| 3 | Sign out; log in as `therapist1@ealho.com` | Redirect to `/therapist/dashboard` |
+| 4 | Sign out; log in as `admin@ealho.com` via `/admin/login` if applicable | Access to admin area (`/admin/dashboard`) |
 
 **Fail:** Wrong redirect, 401 loop, or role can access another role’s home URL.
 
@@ -85,7 +85,7 @@ Create **five Test issues** in Jira (one per ID below) or use this page as a **s
 
 | Step | Action | Expected |
 |------|--------|----------|
-| 1 | Log in as `therapist1@ealhohq.com` | `/therapist/dashboard` loads |
+| 1 | Log in as `therapist1@ealho.com` | `/therapist/dashboard` loads |
 | 2 | Confirm upcoming session list or empty state | No 500; data matches expectation |
 | 3 | Open `/therapist/sessions` | List loads |
 

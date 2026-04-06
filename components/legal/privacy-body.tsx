@@ -206,7 +206,7 @@ export function PrivacyBody() {
         </ul>
         <p>
           To exercise any of these rights, contact us at:{" "}
-          <a href="mailto:privacy@ealhohq.com">privacy@ealhohq.com</a>
+          <a href="mailto:privacy@ealho.com">privacy@ealho.com</a>
         </p>
         <p>We will respond to all requests within 30 days.</p>
       </section>
@@ -268,7 +268,7 @@ export function PrivacyBody() {
         <h2>13. Contact us</h2>
         <p>For all privacy-related queries:</p>
         <p>
-          Email: <a href="mailto:privacy@ealhohq.com">privacy@ealhohq.com</a>
+          Email: <a href="mailto:privacy@ealho.com">privacy@ealho.com</a>
         </p>
         <p>Ealho Technologies Limited</p>
         <p>Lagos, Nigeria</p>

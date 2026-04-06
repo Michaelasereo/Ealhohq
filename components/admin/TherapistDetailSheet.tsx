@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
@@ -23,6 +24,7 @@ export type TherapistDetail = {
   bio: string | null;
   specializations: string[];
   qualifications: string[];
+  profilePhoto?: string | null;
   sessionRate: number;
   sessionDuration: number;
   createdAt: string;
@@ -38,6 +40,8 @@ export function TherapistDetailSheet({
   open,
   onOpenChange,
   onTherapistUpdate,
+  onApprovePending,
+  isApprovingPending,
 }: {
   therapist: TherapistDetail | null;
   open: boolean;
@@ -45,6 +49,9 @@ export function TherapistDetailSheet({
   onTherapistUpdate?: (
     partial: Pick<TherapistDetail, "sessionRate" | "sessionDuration">,
   ) => void;
+  /** When set and therapist is pending, shows Approve in sheet footer (optional; you can still approve from the list). */
+  onApprovePending?: () => void | Promise<void>;
+  isApprovingPending?: boolean;
 }) {
   const qc = useQueryClient();
   const [sessionRateInput, setSessionRateInput] = useState("");
@@ -63,6 +70,8 @@ export function TherapistDetailSheet({
         : 50,
     );
   }, [therapist]);
+
+  const isPending = therapist?.status === "pending";
 
   const saveRates = useMutation({
     mutationFn: async () => {
@@ -103,20 +112,40 @@ export function TherapistDetailSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-md">
+      <SheetContent
+        side="right"
+        className="flex h-full max-h-screen w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-md"
+      >
         {!therapist ? (
-          <p className="text-sm text-muted-foreground">No therapist selected.</p>
+          <p className="p-6 text-sm text-muted-foreground">No therapist selected.</p>
         ) : (
           <>
-            <SheetHeader>
-              <SheetTitle>
-                {therapistPublicLabel(therapist.profile.fullName)}
-              </SheetTitle>
-              <SheetDescription>
-                Therapist profile · {therapist.status}
-              </SheetDescription>
-            </SheetHeader>
-            <div className="mt-4 space-y-4 px-1 pb-8 text-sm">
+            <div className="shrink-0 border-b border-border px-6 pb-4 pt-6">
+              <SheetHeader className="space-y-1 text-left">
+                <SheetTitle>
+                  {therapistPublicLabel(therapist.profile.fullName)}
+                </SheetTitle>
+                <SheetDescription>
+                  {isPending
+                    ? "Application — review details before approving. You can also approve from the list without opening this."
+                    : `Therapist profile · ${therapist.status}`}
+                </SheetDescription>
+              </SheetHeader>
+            </div>
+            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4 text-sm">
+              {isPending && therapist.profilePhoto ? (
+                <div className="relative mx-auto size-28 overflow-hidden rounded-full border border-border bg-muted">
+                  <Image
+                    src={therapist.profilePhoto}
+                    alt=""
+                    fill
+                    className="object-cover"
+                    sizes="112px"
+                    unoptimized={therapist.profilePhoto.startsWith("http")}
+                  />
+                </div>
+              ) : null}
+
               <div>
                 <p className="text-muted-foreground text-xs font-medium uppercase">
                   Contact
@@ -125,9 +154,46 @@ export function TherapistDetailSheet({
                 <p>{therapist.profile.phone ?? "—"}</p>
               </div>
 
+              {isPending ? (
+                <>
+                  <div>
+                    <p className="text-muted-foreground text-xs font-medium uppercase">
+                      Applied
+                    </p>
+                    <p>
+                      {new Date(therapist.createdAt).toLocaleDateString("en-NG", {
+                        day: "numeric",
+                        month: "long",
+                        year: "numeric",
+                      })}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground text-xs font-medium uppercase">
+                      Focus areas
+                    </p>
+                    <p>{therapist.specializations.join(", ") || "—"}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground text-xs font-medium uppercase">
+                      Bio
+                    </p>
+                    <p className="whitespace-pre-wrap">{therapist.bio ?? "—"}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground text-xs font-medium uppercase">
+                      Qualifications
+                    </p>
+                    <p>{therapist.qualifications.join("; ") || "—"}</p>
+                  </div>
+                </>
+              ) : null}
+
               <div className="rounded-lg border border-border p-3 space-y-3">
                 <p className="text-xs font-medium uppercase text-muted-foreground">
-                  Pricing (admin)
+                  {isPending
+                    ? "Session pricing (optional before approval)"
+                    : "Pricing (admin)"}
                 </p>
                 <div className="space-y-2">
                   <Label htmlFor="admin-session-rate">Session Rate (₦)</Label>
@@ -188,51 +254,81 @@ export function TherapistDetailSheet({
                 ) : null}
               </div>
 
-              <div>
-                <p className="text-muted-foreground text-xs font-medium uppercase">
-                  Current display
-                </p>
-                <p>
-                  {formatNgn(therapist.sessionRate)} · {therapist.sessionDuration}{" "}
-                  min sessions
-                </p>
-              </div>
-              <div>
-                <p className="text-muted-foreground text-xs font-medium uppercase">
-                  Focus
-                </p>
-                <p>{therapist.specializations.join(", ") || "—"}</p>
-              </div>
-              <div>
-                <p className="text-muted-foreground text-xs font-medium uppercase">
-                  Bio
-                </p>
-                <p className="whitespace-pre-wrap">{therapist.bio ?? "—"}</p>
-              </div>
-              <div>
-                <p className="text-muted-foreground text-xs font-medium uppercase">
-                  Qualifications
-                </p>
-                <p>{therapist.qualifications.join("; ") || "—"}</p>
-              </div>
+              {!isPending ? (
+                <>
+                  <div>
+                    <p className="text-muted-foreground text-xs font-medium uppercase">
+                      Current display
+                    </p>
+                    <p>
+                      {formatNgn(therapist.sessionRate)} ·{" "}
+                      {therapist.sessionDuration} min sessions
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground text-xs font-medium uppercase">
+                      Focus
+                    </p>
+                    <p>{therapist.specializations.join(", ") || "—"}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground text-xs font-medium uppercase">
+                      Bio
+                    </p>
+                    <p className="whitespace-pre-wrap">{therapist.bio ?? "—"}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground text-xs font-medium uppercase">
+                      Qualifications
+                    </p>
+                    <p>{therapist.qualifications.join("; ") || "—"}</p>
+                  </div>
+                </>
+              ) : null}
+
               <div>
                 <p className="text-muted-foreground text-xs font-medium uppercase">
                   Activity
                 </p>
                 <p>
-                  {therapist._count.sessions} sessions · {therapist._count.bookings}{" "}
-                  bookings
+                  {therapist._count.sessions} sessions ·{" "}
+                  {therapist._count.bookings} bookings
                 </p>
-                <p className="text-muted-foreground mt-1">
-                  Joined{" "}
-                  {new Date(therapist.createdAt).toLocaleDateString("en-NG", {
-                    day: "numeric",
-                    month: "long",
-                    year: "numeric",
-                  })}
-                </p>
+                {!isPending ? (
+                  <p className="text-muted-foreground mt-1">
+                    Joined{" "}
+                    {new Date(therapist.createdAt).toLocaleDateString("en-NG", {
+                      day: "numeric",
+                      month: "long",
+                      year: "numeric",
+                    })}
+                  </p>
+                ) : null}
               </div>
             </div>
+
+            {isPending && onApprovePending ? (
+              <div className="shrink-0 border-t border-border bg-background p-4">
+                <Button
+                  type="button"
+                  className="h-12 w-full"
+                  disabled={isApprovingPending}
+                  onClick={() => void onApprovePending()}
+                >
+                  {isApprovingPending ? (
+                    <>
+                      <Loader2 className="mr-2 size-4 animate-spin" />
+                      Approving…
+                    </>
+                  ) : (
+                    "Approve application"
+                  )}
+                </Button>
+                <p className="mt-2 text-center text-xs text-muted-foreground">
+                  Or approve from the list without closing this panel.
+                </p>
+              </div>
+            ) : null}
           </>
         )}
       </SheetContent>

@@ -26,7 +26,7 @@ export async function GET() {
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    const patient = await ensureRegisteredPatientForUser(user);
+    const patient = (await ensureRegisteredPatientForUser(user))?.patient ?? null;
     if (!patient) {
       return NextResponse.json({ success: true, data: { hasConsent: false } });
     }
@@ -68,7 +68,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const patient = await ensureRegisteredPatientForUser(user);
+    const patient = (await ensureRegisteredPatientForUser(user))?.patient ?? null;
     if (!patient) {
       return NextResponse.json(
         {

@@ -3,10 +3,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Calendar, Check, Clock, Shield, X } from "lucide-react";
 import Image from "next/image";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import type { BookingData } from "@/components/booking/BookingModal";
 import { formatSlotTo12h, formatWatLongDate } from "@/lib/booking/display-wat";
+import { PackageSelector } from "@/components/booking/PackageSelector";
+import { calculatePackagePrice, getPackageOption } from "@/lib/packages/config";
 import { clearReferralCode, getReferralCode } from "@/lib/referral/client";
 
 function buildGuestBookingReason(reason: string, category: string): string | undefined {
@@ -91,6 +93,16 @@ export function BookingStep3({ data, onUpdate, onBack }: Props) {
 
   const availableDates = nextFourteenDaysYmd();
 
+  const selectedPackageId = data.selectedPackage ?? "single";
+  const selectedPkgOption = useMemo(
+    () => getPackageOption(selectedPackageId),
+    [selectedPackageId],
+  );
+  const packageTotal = useMemo(
+    () => calculatePackagePrice(data.therapistRate, selectedPkgOption).finalPrice,
+    [data.therapistRate, selectedPkgOption],
+  );
+
   const { data: slotsData, isLoading: slotsLoading } = useQuery({
     queryKey: ["slots", data.therapistId, selectedDate],
     queryFn: async (): Promise<string[]> => {
@@ -113,7 +125,7 @@ export function BookingStep3({ data, onUpdate, onBack }: Props) {
       const r = await fetch("/api/discount/validate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code: c, amount: data.therapistRate }),
+        body: JSON.stringify({ code: c, amount: packageTotal }),
       });
       const j = (await r.json()) as {
         success?: boolean;
@@ -147,6 +159,7 @@ export function BookingStep3({ data, onUpdate, onBack }: Props) {
     const guestName = data.isAnonymous ? data.alias.trim() : data.fullName.trim();
     const guestBookingReason = buildGuestBookingReason(data.reason, data.reasonCategory);
     const referralCode = getReferralCode();
+    const pkgId = selectedPkgOption.id;
 
     try {
       const createRes = await fetch("/api/booking/create", {
@@ -166,6 +179,7 @@ export function BookingStep3({ data, onUpdate, onBack }: Props) {
           guestBookingReason,
           professionalType: data.professionalType.trim() || undefined,
           referralCode: referralCode ?? undefined,
+          packageType: pkgId,
         }),
       });
       const createJson = (await createRes.json()) as {
@@ -194,9 +208,11 @@ export function BookingStep3({ data, onUpdate, onBack }: Props) {
         body: JSON.stringify({
           bookingId,
           email: data.email.trim(),
+          packageType: pkgId,
           discountCode: discountResult ? discountCode.trim().toUpperCase() : undefined,
           metadata: {
             booking_reason: guestBookingReason ?? "",
+            package_type: pkgId,
           },
         }),
       });
@@ -259,7 +275,7 @@ export function BookingStep3({ data, onUpdate, onBack }: Props) {
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold text-gray-900">{data.therapistName}</p>
           <p className="text-xs text-gray-500">
-            {data.therapistDuration} min session · ₦{data.therapistRate.toLocaleString()}
+            {data.therapistDuration} min · from ₦{data.therapistRate.toLocaleString()}/session
           </p>
         </div>
         {data.isAutoMatched ? (
@@ -348,12 +364,34 @@ export function BookingStep3({ data, onUpdate, onBack }: Props) {
       ) : null}
 
       {selectedSlot ? (
+        <PackageSelector
+          sessionRate={data.therapistRate}
+          therapistName={data.therapistName}
+          selectedPackage={selectedPackageId}
+          onSelect={(packageId) => {
+            setDiscountResult(null);
+            setDiscountCode("");
+            setDiscountError("");
+            onUpdate({ selectedPackage: packageId });
+          }}
+        />
+      ) : null}
+
+      {selectedSlot ? (
         <div className="space-y-2 rounded-xl bg-gray-50 p-4">
           <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Summary</p>
           <div className="flex justify-between text-sm">
             <span className="text-gray-600">Session</span>
             <span className="font-medium text-gray-900">{data.therapistDuration} minutes</span>
           </div>
+          {selectedPkgOption.id !== "single" ? (
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-600">Plan</span>
+              <span className="text-right font-medium text-gray-900">
+                {selectedPkgOption.label}
+              </span>
+            </div>
+          ) : null}
           <div className="flex justify-between text-sm">
             <span className="text-gray-600">Date</span>
             <span className="text-right font-medium text-gray-900">
@@ -372,7 +410,7 @@ export function BookingStep3({ data, onUpdate, onBack }: Props) {
               {discountResult ? (
                 <>
                   <span className="mr-2 text-gray-400 line-through">
-                    ₦{data.therapistRate.toLocaleString()}
+                    ₦{packageTotal.toLocaleString()}
                   </span>
                   <span
                     className={
@@ -385,7 +423,7 @@ export function BookingStep3({ data, onUpdate, onBack }: Props) {
                   </span>
                 </>
               ) : (
-                `₦${data.therapistRate.toLocaleString()}`
+                `₦${packageTotal.toLocaleString()}`
               )}
             </span>
           </div>
@@ -553,11 +591,7 @@ export function BookingStep3({ data, onUpdate, onBack }: Props) {
             type="button"
             onClick={handleProceedToPayment}
             disabled={!canProceed || isSubmitting}
-            className={`flex flex-1 items-center justify-center rounded-xl py-3 font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
-              discountResult?.isFree
-                ? "bg-green-600 text-white hover:bg-green-700"
-                : "bg-[#2C3B2D] text-white hover:bg-[#3a4d3b]"
-            }`}
+            className="flex flex-1 items-center justify-center rounded-xl bg-primary py-3 font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-40"
           >
             {isSubmitting ? (
               <span className="flex items-center justify-center gap-2">
@@ -567,7 +601,7 @@ export function BookingStep3({ data, onUpdate, onBack }: Props) {
             ) : discountResult?.isFree ? (
               "✓ Confirm Free Booking →"
             ) : (
-              `Pay ₦${(discountResult?.finalAmount ?? data.therapistRate).toLocaleString()} →`
+              `Pay ₦${(discountResult?.finalAmount ?? packageTotal).toLocaleString()} →`
             )}
           </button>
         </div>

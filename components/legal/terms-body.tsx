@@ -150,7 +150,7 @@ export function TermsBody() {
       <section id="contact-terms" className="scroll-mt-24">
         <h2>10. Contact</h2>
         <p>
-          <a href="mailto:legal@ealhohq.com">legal@ealhohq.com</a>
+          <a href="mailto:legal@ealho.com">legal@ealho.com</a>
         </p>
       </section>
     </>

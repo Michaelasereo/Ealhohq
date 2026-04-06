@@ -74,8 +74,42 @@ export function calculatePackagePrice(
   };
 }
 
-export function getPackageExpiry(): Date {
-  const expiry = new Date();
-  expiry.setMonth(expiry.getMonth() + 6);
-  return expiry;
+/**
+ * When the purchased sessions must be used by (for `therapy_session_packages.expiresAt`).
+ * Single: 2 weeks · 4 & 6-session packs: 2 months · 8-session pack: 3 months.
+ */
+export function getPackageExpiry(packageType: string): Date {
+  const id = getPackageOption(packageType).id;
+  const d = new Date();
+  switch (id) {
+    case "single":
+      d.setDate(d.getDate() + 14);
+      return d;
+    case "package_4":
+    case "package_6":
+      d.setMonth(d.getMonth() + 2);
+      return d;
+    case "package_8":
+      d.setMonth(d.getMonth() + 3);
+      return d;
+    default:
+      d.setMonth(d.getMonth() + 2);
+      return d;
+  }
+}
+
+/** Short copy for booking UI (e.g. package picker). */
+export function getPackageValidityLabel(packageType: string): string {
+  const id = getPackageOption(packageType).id;
+  switch (id) {
+    case "single":
+      return "Complete your session within 2 weeks of purchase.";
+    case "package_4":
+    case "package_6":
+      return "Use remaining sessions within 2 months of purchase.";
+    case "package_8":
+      return "Use remaining sessions within 3 months of purchase.";
+    default:
+      return "Use remaining sessions within the validity period shown on your receipt.";
+  }
 }

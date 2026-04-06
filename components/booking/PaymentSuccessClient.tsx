@@ -193,8 +193,8 @@ export function PaymentSuccessClient({
         </p>
         <p className="text-sm">
           Contact us at{" "}
-          <a className="text-primary underline" href="mailto:hello@ealhohq.com">
-            hello@ealhohq.com
+          <a className="text-primary underline" href="mailto:hello@ealho.com">
+            hello@ealho.com
           </a>
         </p>
         <Link

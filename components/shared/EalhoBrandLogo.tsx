@@ -26,9 +26,10 @@ export function EalhoBrandLogo({
         height={42}
         className={cn(
           "h-7 w-auto max-w-[min(7.5rem,calc(100%-5rem))] object-contain object-left",
-          "md:size-28 md:max-w-none",
+          "md:h-28 md:w-auto md:max-w-none",
           imgClassName,
         )}
+        style={{ width: "auto", height: "auto" }}
         priority
         unoptimized
       />

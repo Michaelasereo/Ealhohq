@@ -8,6 +8,27 @@ import { getDisplayName } from "@/lib/utils/patient-display";
 
 type Ctx = { params: Promise<{ clientId: string }> };
 
+const therapistClientBookingSelect = {
+  id: true,
+  date: true,
+  startTime: true,
+  status: true,
+  sessionType: true,
+  isAnonymous: true,
+  clientAlias: true,
+  guestName: true,
+  session: {
+    select: {
+      id: true,
+      sessionNumber: true,
+      durationMinutes: true,
+      status: true,
+      notesGenerated: true,
+      note: { select: { id: true } },
+    },
+  },
+} as const;
+
 export async function GET(_req: Request, ctx: Ctx) {
   try {
     const { clientId } = await ctx.params;
@@ -73,11 +94,7 @@ export async function GET(_req: Request, ctx: Ctx) {
 
     const bookings = await prisma.therapyBooking.findMany({
       where: { therapistId: therapist.id, patientId: clientId },
-      include: {
-        session: {
-          include: { note: { select: { id: true } } },
-        },
-      },
+      select: therapistClientBookingSelect,
       orderBy: [{ date: "desc" }, { startTime: "desc" }],
     });
 

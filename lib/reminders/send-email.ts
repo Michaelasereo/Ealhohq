@@ -34,7 +34,7 @@ function getResend(): Resend | null {
 export function getResendFromAddress(): string {
   const raw = process.env.RESEND_FROM_EMAIL?.trim();
   if (raw) return raw;
-  return "Ealho Therapy <noreply@ealhohq.com>";
+  return "Ealho Therapy <noreply@ealho.com>";
 }
 
 export type SendEmailResult =

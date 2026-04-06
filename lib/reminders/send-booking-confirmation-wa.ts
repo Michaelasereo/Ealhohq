@@ -16,9 +16,13 @@ type BookingWa = Prisma.TherapyBookingGetPayload<{
   include: {
     therapist: { include: { profile: true } };
     patient: true;
-    package: true;
   };
-}>;
+}> & {
+  package?: {
+    totalSessions: number;
+    remainingSessions: number;
+  } | null;
+};
 
 /**
  * Sends paid-booking WhatsApp to the client and therapist when phone numbers exist.

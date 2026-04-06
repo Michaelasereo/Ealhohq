@@ -35,6 +35,7 @@ export function AuthChrome({
               height={50}
               priority
               className="h-10 w-auto sm:h-11"
+              style={{ width: "auto", height: "auto" }}
             />
           </Link>
         </div>

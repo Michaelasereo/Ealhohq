@@ -4,7 +4,7 @@ import { z } from "zod";
 import { tierFromBalance } from "@/lib/credits/purchase-config";
 import { finalizeTherapyPaymentWithCredits } from "@/lib/payment/finalize-therapy-payment";
 import { sendTherapyBookingPaidNotifications } from "@/lib/payment/send-therapy-booking-paid-notifications";
-import { getPatientByProfileId } from "@/lib/queries/patient";
+import { ensureRegisteredPatientForUser } from "@/lib/queries/patient";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma/client";
 
@@ -35,7 +35,7 @@ export async function POST(req: Request) {
 
     const { bookingId } = parsed.data;
 
-    const patient = await getPatientByProfileId(user.id);
+    const patient = (await ensureRegisteredPatientForUser(user))?.patient ?? null;
     if (!patient) {
       return NextResponse.json(
         { success: false, error: "Client profile not found" },
@@ -50,6 +50,7 @@ export async function POST(req: Request) {
         status: "pending",
         paymentStatus: "pending",
       },
+      select: { id: true },
     });
 
     if (!booking) {

@@ -105,7 +105,7 @@ async function main() {
 
   // Admin
   const adminUser = await getOrCreateAuthUser(
-    "admin@ealhohq.com",
+    "admin@ealho.com",
     "TestAdmin123!",
     "admin",
     "Ealho Admin",
@@ -125,7 +125,7 @@ async function main() {
 
   // Therapist 1
   const t1User = await getOrCreateAuthUser(
-    "therapist1@ealhohq.com",
+    "therapist1@ealho.com",
     "TestTherapist123!",
     "therapist",
     "Amaka Obi",
@@ -171,7 +171,7 @@ async function main() {
 
   // Therapist 2
   const t2User = await getOrCreateAuthUser(
-    "therapist2@ealhohq.com",
+    "therapist2@ealho.com",
     "TestTherapist123!",
     "therapist",
     "Chidi Nwosu",
@@ -217,7 +217,7 @@ async function main() {
 
   // Patient
   const pUser = await getOrCreateAuthUser(
-    "patient@ealhohq.com",
+    "patient@ealho.com",
     "TestPatient123!",
     "patient",
     "Test Patient",
@@ -239,7 +239,7 @@ async function main() {
     create: {
       profileId: pProfile.id,
       fullName: "Test Patient",
-      email: "patient@ealhohq.com",
+      email: "patient@ealho.com",
       phone: "08012345678",
     },
   });

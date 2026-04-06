@@ -386,8 +386,8 @@ export function BookingStep3Patient({ data, onUpdate, onBack, onComplete }: Prop
   if (bookingSuccess && confirmedBookingId) {
     return (
       <div className="p-8 text-center">
-        <div className="mx-auto mb-4 flex size-14 items-center justify-center rounded-full bg-green-50">
-          <Check size={24} strokeWidth={2} className="text-green-600" />
+        <div className="mx-auto mb-4 flex size-14 items-center justify-center rounded-full bg-primary/10">
+          <Check size={24} strokeWidth={2} className="text-primary" />
         </div>
         <h3 className="mb-1 text-lg font-bold text-gray-900">Session booked! 🎉</h3>
         <p className="mb-6 text-sm text-gray-500">
@@ -847,13 +847,7 @@ export function BookingStep3Patient({ data, onUpdate, onBack, onComplete }: Prop
                 : handleCardPayment()
             }
             disabled={!canProceed || isSubmitting}
-            className={`flex flex-1 items-center justify-center rounded-xl py-3 font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
-              freeByDiscount
-                ? "bg-green-600 text-white hover:bg-green-700"
-                : paymentMethod === "credits"
-                  ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                  : "bg-[#2C3B2D] text-white hover:bg-[#3a4d3b]"
-            }`}
+            className="flex flex-1 items-center justify-center rounded-xl bg-primary py-3 font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-40"
           >
             {isSubmitting ? (
               <span className="flex items-center justify-center gap-2">

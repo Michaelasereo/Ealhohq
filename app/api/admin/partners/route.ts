@@ -160,7 +160,7 @@ export async function POST(req: Request) {
         4. Earnings are paid monthly to your bank account</p>
         <p>Log in to track referrals:<br/>${appUrl}/partners/dashboard</p>
         <p>Login: ${email}<br/>Temporary password: ${tempPassword}</p>
-        <p>For support: hello@ealhohq.com</p>
+        <p>For support: hello@ealho.com</p>
       `,
     });
 

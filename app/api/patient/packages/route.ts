@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { getPatientByProfileId } from "@/lib/queries/patient";
+import { ensureRegisteredPatientForUser } from "@/lib/queries/patient";
 import { prisma } from "@/lib/prisma/client";
 import { createClient } from "@/lib/supabase/server";
 import { therapistPublicLabel } from "@/lib/therapist-display-name";
@@ -15,7 +15,7 @@ export async function GET() {
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
     }
 
-    const patient = await getPatientByProfileId(user.id);
+    const patient = (await ensureRegisteredPatientForUser(user))?.patient ?? null;
     if (!patient) {
       return NextResponse.json({
         success: true,

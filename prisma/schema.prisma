@@ -47,6 +47,11 @@ model SharedProfile {
   fullName  String
   phone     String?
   status    String   @default("active") // active | inactive | suspended
+  /** User dismissed the guest-merge welcome banner */
+  guestMergeCompleted Boolean @default(false)
+  /** Guest rows were merged; show one-time banner until dismissed */
+  guestMergeBannerPending Boolean @default(false)
+  guestMergeSessionCount   Int?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -314,7 +319,7 @@ model TherapyCreditTransaction {
   id        String   @id @default(uuid()) @db.Uuid
   patientId String   @db.Uuid
   amount    Decimal  @db.Decimal(10, 2) // positive = purchase, negative = used
-  type      String // purchase | session | refund
+  type      String // purchase | session | refund | admin_grant
   reference String?
   createdAt DateTime @default(now())
 

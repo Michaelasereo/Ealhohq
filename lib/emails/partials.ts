@@ -35,13 +35,19 @@ export function emailShell(inner: string): string {
 </html>`;
 }
 
-/** Absolute URL to the mark-only logo (icon, no wordmark) for email &lt;img src&gt;. */
+/**
+ * Absolute URL to the mark-only logo for email &lt;img src&gt;.
+ * PNG — SVG is widely blocked or broken in email (Outlook, Gmail image filters).
+ * Override with `EMAIL_LOGO_MARK_URL` (e.g. CDN) if needed.
+ */
 export function emailMarkLogoUrl(): string {
-  return `${getAppOrigin()}/Ealho-mark.svg`;
+  const override = process.env.EMAIL_LOGO_MARK_URL?.trim();
+  if (override) return override;
+  return `${getAppOrigin()}/Ealho-mark.png`;
 }
 
 /**
- * Mark-only brand image for HTML emails. Uses hosted SVG (PNG alternative: add Ealho-mark.png if needed for Outlook).
+ * Mark-only brand image for HTML emails. Table wrapper + `display:block` img for Gmail/Outlook.
  */
 export function emailMarkLogoImg(options?: {
   maxHeightPx?: number;
@@ -50,9 +56,12 @@ export function emailMarkLogoImg(options?: {
   const maxH = options?.maxHeightPx ?? 52;
   const align = options?.align ?? "center";
   const src = escapeHtml(emailMarkLogoUrl());
-  return `<div style="text-align:${align};line-height:0;">
-    <img src="${src}" alt="Ealho" width="52" height="52" style="display:inline-block;border:0;outline:none;text-decoration:none;max-height:${maxH}px;width:auto;height:auto;" />
-  </div>`;
+  const tableAlign = align === "left" ? "left" : "center";
+  const margin = align === "left" ? "margin:0;" : "margin:0 auto;";
+  return `<table role="presentation" cellspacing="0" cellpadding="0" border="0" align="${tableAlign}" width="100%" style="${margin}"><tr><td align="${tableAlign}" style="padding:0;line-height:0;mso-line-height-rule:exactly;">
+    <img src="${src}" alt="Ealho" width="${maxH}" height="${maxH}" border="0"
+      style="display:block;border:0;outline:none;text-decoration:none;width:${maxH}px;height:${maxH}px;max-width:100%;" />
+  </td></tr></table>`;
 }
 
 export function brandHeader(): string {

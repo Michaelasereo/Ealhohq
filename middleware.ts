@@ -89,10 +89,15 @@ export async function middleware(request: NextRequest) {
   const {
     data: { session },
   } = await supabase.auth.getSession();
+  const {
+    data: { user: authUser },
+  } = await supabase.auth.getUser();
 
   const path = request.nextUrl.pathname;
-  const role = session?.user?.app_metadata?.role as string | undefined;
-  const status = session?.user?.app_metadata?.status as string | undefined;
+  const role = (authUser?.app_metadata?.role ??
+    session?.user?.app_metadata?.role) as string | undefined;
+  const status = (authUser?.app_metadata?.status ??
+    session?.user?.app_metadata?.status) as string | undefined;
 
   if (session && path === "/login") {
     if (role === "patient") {

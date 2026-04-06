@@ -15,6 +15,6 @@ export function formatDurationLabel(minutes: number): string {
 
 export function getAppOrigin(): string {
   return (
-    process.env.NEXT_PUBLIC_APP_URL?.trim().replace(/\/$/, "") ?? "https://ealhohq.com"
+    process.env.NEXT_PUBLIC_APP_URL?.trim().replace(/\/$/, "") ?? "https://ealho.com"
   );
 }

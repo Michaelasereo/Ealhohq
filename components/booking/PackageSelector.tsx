@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import {
   calculatePackagePrice,
   getPackageOption,
+  getPackageValidityLabel,
   PACKAGE_OPTIONS,
 } from "@/lib/packages/config";
 import { cn } from "@/lib/utils";
@@ -29,7 +30,8 @@ export function PackageSelector({
       <div>
         <h2 className="text-base font-semibold">How many sessions would you like?</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          All sessions with {therapistName}. Unused sessions valid for 6 months.
+          All sessions with {therapistName}.{" "}
+          {getPackageValidityLabel(selectedPackage)}
         </p>
       </div>
 
@@ -48,7 +50,7 @@ export function PackageSelector({
               className={cn(
                 "relative min-h-12 w-full rounded-xl border p-4 text-left transition-colors",
                 active
-                  ? "border-2 border-[#1A7A4A] bg-[#F0FAF4]"
+                  ? "border-2 border-primary bg-primary/10"
                   : "border-border bg-card hover:bg-muted/30",
               )}
             >
@@ -58,14 +60,14 @@ export function PackageSelector({
                     className={cn(
                       "mt-0.5 inline-flex size-5 items-center justify-center rounded-full border",
                       active
-                        ? "border-[#1A7A4A] bg-[#1A7A4A]"
+                        ? "border-primary bg-primary"
                         : "border-muted-foreground/40 bg-background",
                     )}
                     aria-hidden
                   >
                     <span
                       className={cn(
-                        "size-2 rounded-full bg-white transition-opacity",
+                        "size-2 rounded-full bg-primary-foreground transition-opacity",
                         active ? "opacity-100" : "opacity-0",
                       )}
                     />
@@ -73,7 +75,7 @@ export function PackageSelector({
                   <p className="font-semibold">{option.label}</p>
                 </div>
                 {option.tag ? (
-                  <span className="rounded-full bg-[#1A7A4A] px-2 py-0.5 text-xs font-medium text-white">
+                  <span className="rounded-full bg-primary px-2 py-0.5 text-xs font-medium text-primary-foreground">
                     {option.tag}
                   </span>
                 ) : null}
@@ -92,7 +94,7 @@ export function PackageSelector({
                     <span className="text-muted-foreground line-through">
                       ₦{price.originalPrice.toLocaleString("en-NG")}
                     </span>
-                    <span className="text-xs font-medium text-[#1A7A4A]">
+                    <span className="text-xs font-medium text-primary">
                       {price.savingsText}
                     </span>
                   </p>

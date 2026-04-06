@@ -1,11 +1,36 @@
 import { NextResponse } from "next/server";
 
-import { getPatientByProfileId } from "@/lib/queries/patient";
+import { ensureRegisteredPatientForUser } from "@/lib/queries/patient";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma/client";
 import { therapistPublicLabel } from "@/lib/therapist-display-name";
 import { bookingDateStartToIso } from "@/lib/wat-datetime";
 import { watDayStart, watTodayDateString } from "@/lib/wat-datetime";
+
+const patientSessionsBookingSelect = {
+  id: true,
+  date: true,
+  startTime: true,
+  endTime: true,
+  status: true,
+  sessionType: true,
+  paidWithCredits: true,
+  rescheduleCount: true,
+  therapist: {
+    select: {
+      id: true,
+      profilePhoto: true,
+      profile: { select: { fullName: true } },
+    },
+  },
+  session: {
+    select: {
+      id: true,
+      sessionNumber: true,
+      feedbacks: { select: { id: true }, take: 1 },
+    },
+  },
+} as const;
 
 function mapBooking(
   b: {
@@ -63,7 +88,7 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const patient = await getPatientByProfileId(user.id);
+    const patient = (await ensureRegisteredPatientForUser(user))?.patient ?? null;
     if (!patient) {
       return NextResponse.json({
         success: true,
@@ -81,16 +106,7 @@ export async function GET() {
         date: { gte: todayStart },
       },
       orderBy: [{ date: "asc" }, { startTime: "asc" }],
-      include: {
-        therapist: { include: { profile: { select: { fullName: true } } } },
-        session: {
-          select: {
-            id: true,
-            sessionNumber: true,
-            feedbacks: { select: { id: true }, take: 1 },
-          },
-        },
-      },
+      select: patientSessionsBookingSelect,
       take: 40,
     });
 
@@ -109,16 +125,7 @@ export async function GET() {
       },
       orderBy: [{ date: "desc" }, { startTime: "desc" }],
       take: 20,
-      include: {
-        therapist: { include: { profile: { select: { fullName: true } } } },
-        session: {
-          select: {
-            id: true,
-            sessionNumber: true,
-            feedbacks: { select: { id: true }, take: 1 },
-          },
-        },
-      },
+      select: patientSessionsBookingSelect,
     });
 
     const past = pastRaw.map(mapBooking);

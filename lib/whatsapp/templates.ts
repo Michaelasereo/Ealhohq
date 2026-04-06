@@ -1,5 +1,5 @@
 const appUrl = () =>
-  (process.env.NEXT_PUBLIC_APP_URL ?? "").replace(/\/$/, "") || "https://ealhohq.com";
+  (process.env.NEXT_PUBLIC_APP_URL ?? "").replace(/\/$/, "") || "https://ealho.com";
 
 export const templates = {
   bookingConfirmed: (params: {

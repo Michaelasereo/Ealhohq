@@ -1,10 +1,32 @@
 import { NextResponse } from "next/server";
 
-import { getPatientByProfileId } from "@/lib/queries/patient";
+import { ensureRegisteredPatientForUser } from "@/lib/queries/patient";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma/client";
 import { therapistPublicLabel } from "@/lib/therapist-display-name";
 import { bookingDateStartToIso } from "@/lib/wat-datetime";
+
+const patientHistoryBookingSelect = {
+  id: true,
+  date: true,
+  startTime: true,
+  endTime: true,
+  status: true,
+  sessionType: true,
+  therapist: {
+    select: {
+      id: true,
+      profile: { select: { fullName: true } },
+    },
+  },
+  session: {
+    select: {
+      sessionNumber: true,
+      durationMinutes: true,
+      feedbacks: { select: { id: true }, take: 1 },
+    },
+  },
+} as const;
 
 export async function GET(req: Request) {
   try {
@@ -16,7 +38,7 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const patient = await getPatientByProfileId(user.id);
+    const patient = (await ensureRegisteredPatientForUser(user))?.patient ?? null;
     if (!patient) {
       return NextResponse.json({
         success: true,
@@ -54,19 +76,7 @@ export async function GET(req: Request) {
           : {}),
       },
       orderBy: [{ date: "desc" }, { startTime: "desc" }],
-      include: {
-        therapist: {
-          include: { profile: { select: { fullName: true } } },
-        },
-        session: {
-          select: {
-            id: true,
-            sessionNumber: true,
-            durationMinutes: true,
-            feedbacks: { select: { id: true }, take: 1 },
-          },
-        },
-      },
+      select: patientHistoryBookingSelect,
     });
 
     const filtered = search

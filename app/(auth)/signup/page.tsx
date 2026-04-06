@@ -6,7 +6,7 @@ import { Suspense, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Loader2 } from "lucide-react";
+import { Link2, Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -40,6 +40,12 @@ function SignupPageContent() {
   const searchParams = useSearchParams();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [isCheckingEmail, setIsCheckingEmail] = useState(false);
+  const [guestFound, setGuestFound] = useState<{
+    sessionCount: number;
+    therapistName: string;
+    lastSessionDate: string;
+  } | null>(null);
 
   const {
     register,
@@ -62,6 +68,37 @@ function SignupPageContent() {
     const e = searchParams.get("email")?.trim();
     if (e) setValue("email", e);
   }, [searchParams, setValue]);
+
+  async function checkGuestEmail(email: string) {
+    if (!email || !email.includes("@")) return;
+    setIsCheckingEmail(true);
+    try {
+      const res = await fetch(
+        `/api/auth/check-guest-email?email=${encodeURIComponent(email)}`,
+      );
+      const data = (await res.json()) as {
+        found?: boolean;
+        sessionCount?: number;
+        therapistName?: string;
+        lastSessionDate?: string;
+      };
+      if (data.found && data.therapistName) {
+        setGuestFound({
+          sessionCount: data.sessionCount ?? 0,
+          therapistName: data.therapistName,
+          lastSessionDate: data.lastSessionDate ?? "",
+        });
+      } else {
+        setGuestFound(null);
+      }
+    } catch {
+      setGuestFound(null);
+    } finally {
+      setIsCheckingEmail(false);
+    }
+  }
+
+  const emailField = register("email");
 
   const onSubmit = async (values: SignupForm) => {
     setError(null);
@@ -129,10 +166,36 @@ function SignupPageContent() {
                 type="email"
                 autoComplete="email"
                 className="h-12 min-h-[48px] text-base"
-                {...register("email")}
+                {...emailField}
+                onBlur={(e) => {
+                  emailField.onBlur(e);
+                  void checkGuestEmail(e.target.value);
+                }}
               />
               {errors.email && (
                 <p className="text-sm text-destructive">{errors.email.message}</p>
+              )}
+              {isCheckingEmail && (
+                <p className="mt-1 flex items-center gap-1.5 text-xs text-gray-400">
+                  <span className="inline-block size-3 animate-spin rounded-full border border-gray-300 border-t-gray-600" />
+                  Checking for existing sessions...
+                </p>
+              )}
+              {guestFound && (
+                <div className="mt-2 flex items-start gap-3 rounded-xl border border-[#2C3B2D]/20 bg-[#2C3B2D]/5 px-4 py-3">
+                  <div className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-[#2C3B2D]/15">
+                    <Link2 size={11} strokeWidth={2} className="text-[#2C3B2D]" />
+                  </div>
+                  <div>
+                    <p className="mb-0.5 text-xs font-semibold text-[#2C3B2D]">
+                      We found your session
+                    </p>
+                    <p className="text-xs text-gray-600">
+                      You booked a session with {guestFound.therapistName}. Create your
+                      account to manage it, view your notes history, and rebook easily.
+                    </p>
+                  </div>
+                </div>
               )}
             </div>
             <div className="space-y-2">

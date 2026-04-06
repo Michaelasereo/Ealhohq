@@ -1,10 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import {
-  ensureRegisteredPatientForUser,
-  getPatientByProfileId,
-} from "@/lib/queries/patient";
+import { ensureRegisteredPatientForUser } from "@/lib/queries/patient";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma/client";
 
@@ -39,7 +36,7 @@ export async function GET() {
       where: { id: user.id },
     });
 
-    const patient = await getPatientByProfileId(user.id);
+    const patient = (await ensureRegisteredPatientForUser(user))?.patient ?? null;
 
     return NextResponse.json({
       success: true,
@@ -100,16 +97,7 @@ export async function PATCH(req: Request) {
       });
     }
 
-    let patient = await getPatientByProfileId(user.id);
-    if (
-      !patient &&
-      (body.dateOfBirth !== undefined ||
-        body.gender !== undefined ||
-        body.occupation !== undefined ||
-        body.fullName !== undefined)
-    ) {
-      patient = await ensureRegisteredPatientForUser(user);
-    }
+    const patient = (await ensureRegisteredPatientForUser(user))?.patient ?? null;
 
     if (patient) {
       const pUpdate: {

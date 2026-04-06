@@ -12,6 +12,25 @@ import {
 import { therapistFirstNameForGreeting } from "@/lib/therapist-display-name";
 import { watCurrentMonthStart } from "@/lib/wat-month";
 
+const therapistDashboardBookingSelect = {
+  id: true,
+  date: true,
+  startTime: true,
+  endTime: true,
+  status: true,
+  sessionType: true,
+  isAnonymous: true,
+  patient: { select: { fullName: true, email: true } },
+  session: {
+    select: {
+      id: true,
+      status: true,
+      notesGenerated: true,
+      sessionNumber: true,
+    },
+  },
+} as const;
+
 export async function GET(req: Request) {
   try {
     const zone = new URL(req.url).searchParams.get("zone");
@@ -122,17 +141,7 @@ export async function GET(req: Request) {
           date: { gte: todayStart, lte: todayEnd },
           status: { in: ["confirmed", "completed"] },
         },
-        include: {
-          patient: { select: { fullName: true, email: true } },
-          session: {
-            select: {
-              id: true,
-              status: true,
-              notesGenerated: true,
-              sessionNumber: true,
-            },
-          },
-        },
+        select: therapistDashboardBookingSelect,
         orderBy: { startTime: "asc" },
       });
       return NextResponse.json({
@@ -148,17 +157,7 @@ export async function GET(req: Request) {
           date: { gt: todayEnd, lte: weekEnd },
           status: "confirmed",
         },
-        include: {
-          patient: { select: { fullName: true } },
-          session: {
-            select: {
-              id: true,
-              sessionNumber: true,
-              notesGenerated: true,
-              status: true,
-            },
-          },
-        },
+        select: therapistDashboardBookingSelect,
         orderBy: [{ date: "asc" }, { startTime: "asc" }],
         take: 10,
       });
@@ -176,17 +175,7 @@ export async function GET(req: Request) {
             date: { gte: todayStart, lte: todayEnd },
             status: { in: ["confirmed", "completed"] },
           },
-          include: {
-            patient: { select: { fullName: true, email: true } },
-            session: {
-              select: {
-                id: true,
-                status: true,
-                notesGenerated: true,
-                sessionNumber: true,
-              },
-            },
-          },
+          select: therapistDashboardBookingSelect,
           orderBy: { startTime: "asc" },
         }),
         prisma.therapyBooking.findMany({
@@ -195,17 +184,7 @@ export async function GET(req: Request) {
             date: { gt: todayEnd, lte: weekEnd },
             status: "confirmed",
           },
-          include: {
-            patient: { select: { fullName: true } },
-            session: {
-              select: {
-                id: true,
-                sessionNumber: true,
-                notesGenerated: true,
-                status: true,
-              },
-            },
-          },
+          select: therapistDashboardBookingSelect,
           orderBy: [{ date: "asc" }, { startTime: "asc" }],
           take: 10,
         }),

@@ -80,7 +80,7 @@ export function TherapistStandardsBody() {
           <li>Not attempt to identify anonymous clients</li>
           <li>
             Report any suspected data breach immediately to Ealho at{" "}
-            <a href="mailto:privacy@ealhohq.com">privacy@ealhohq.com</a>
+            <a href="mailto:privacy@ealho.com">privacy@ealho.com</a>
           </li>
           <li>Comply with the Nigeria Data Protection Act 2023</li>
         </ul>
@@ -98,7 +98,7 @@ export function TherapistStandardsBody() {
         </ul>
         <p>
           Complaints about therapists can be submitted to:{" "}
-          <a href="mailto:standards@ealhohq.com">standards@ealhohq.com</a>
+          <a href="mailto:standards@ealho.com">standards@ealho.com</a>
         </p>
         <p>
           All complaints are investigated by the Ealho clinical team. Therapists are notified and

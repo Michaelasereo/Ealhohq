@@ -175,6 +175,7 @@ export default function AuthVerifyPage() {
           bio: draft.bio,
           specializations: draft.specializations,
           qualifications: draft.qualifications,
+          profilePhotoBase64: draft.profilePhotoBase64 ?? null,
         }),
       });
       const regJson = (await reg.json().catch(() => ({}))) as {

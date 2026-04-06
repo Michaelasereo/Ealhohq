@@ -9,8 +9,8 @@ Paste this (or link this file) into your **Jira Epic description**, **Confluence
 | Name | Base URL | Purpose |
 |------|----------|---------|
 | Local | `http://localhost:3000` | Dev; requires `.env.local` |
-| Staging | _[fill: e.g. https://staging.ealhohq.com]_ | Pre-prod QA |
-| Production | _[fill: https://ealhohq.com]_ | Smoke after deploy |
+| Staging | _[fill: e.g. https://staging.ealho.com]_ | Pre-prod QA |
+| Production | _[fill: https://ealho.com]_ | Smoke after deploy |
 
 **Required for app boot**
 
@@ -37,10 +37,10 @@ Defined in [`prisma/seed.ts`](../../prisma/seed.ts). Passwords are for **non-pro
 
 | Role | Email | Password | Notes |
 |------|--------|----------|--------|
-| Admin | `admin@ealhohq.com` | `TestAdmin123!` | `/admin/login` |
-| Therapist (approved) | `therapist1@ealhohq.com` | `TestTherapist123!` | `/therapist/dashboard` |
-| Therapist (approved) | `therapist2@ealhohq.com` | `TestTherapist123!` | Second calendar |
-| Client | `patient@ealhohq.com` | `TestPatient123!` | `/dashboard`; seeded with **2** credits, bronze tier |
+| Admin | `admin@ealho.com` | `TestAdmin123!` | `/admin/login` |
+| Therapist (approved) | `therapist1@ealho.com` | `TestTherapist123!` | `/therapist/dashboard` |
+| Therapist (approved) | `therapist2@ealho.com` | `TestTherapist123!` | Second calendar |
+| Client | `patient@ealho.com` | `TestPatient123!` | `/dashboard`; seeded with **2** credits, bronze tier |
 
 **Session rate (seed)** — therapists use **₦20,000** per session (`sessionRate: 20000`) for pricing QA.
 
@@ -66,6 +66,6 @@ Defined in [`prisma/seed.ts`](../../prisma/seed.ts). Passwords are for **non-pro
 ```text
 Staging URL: [FILL]
 Paystack: TEST keys only on staging
-Seed users: see docs/qa/environment-and-test-data.md (admin@ealhohq.com, therapist1@ealhohq.com, patient@ealhohq.com)
+Seed users: see docs/qa/environment-and-test-data.md (admin@ealho.com, therapist1@ealho.com, patient@ealho.com)
 Discounts: EALHO100, EALHO10 after prisma seed
 ```

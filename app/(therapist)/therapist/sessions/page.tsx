@@ -132,7 +132,7 @@ function SessionCard({
                 </span>
               ) : null}
               {b.package ? (
-                <span className="rounded-full bg-[#1A7A4A]/10 px-2 py-0.5 text-xs text-[#1A7A4A]">
+                <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary">
                   📦 Package · {Math.min(b.package.usedSessions, b.package.totalSessions)} of{" "}
                   {b.package.totalSessions}
                 </span>

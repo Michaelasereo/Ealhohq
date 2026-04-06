@@ -22,9 +22,6 @@ export async function GET() {
       totalTherapists,
       pendingTherapists,
       sessionsThisMonth,
-      activePackagesCount,
-      packageRevenueThisMonth,
-      packageConversionRate,
       pendingApplications,
     ] = await Promise.all([
       prisma.therapyPatient.count(),
@@ -33,29 +30,6 @@ export async function GET() {
       prisma.therapySession.count({
         where: { createdAt: { gte: monthStart } },
       }),
-      prisma.therapySessionPackage.count({ where: { status: "active" } }),
-      prisma.therapySessionPackage.aggregate({
-        _sum: { totalPaid: true },
-        where: { createdAt: { gte: monthStart } },
-      }),
-      (async () => {
-        const [pkg, single] = await Promise.all([
-          prisma.therapyBooking.count({
-            where: {
-              status: { in: ["confirmed", "completed"] },
-              packageId: { not: null },
-            },
-          }),
-          prisma.therapyBooking.count({
-            where: {
-              status: { in: ["confirmed", "completed"] },
-              packageId: null,
-            },
-          }),
-        ]);
-        const total = pkg + single;
-        return total > 0 ? Math.round((pkg / total) * 100) : 0;
-      })(),
       prisma.therapyTherapist.findMany({
         where: { status: "pending" },
         include: {
@@ -64,6 +38,38 @@ export async function GET() {
         orderBy: { createdAt: "asc" },
       }),
     ]);
+
+    // Gracefully handle DBs where session package migration has not been applied yet.
+    let activePackagesCount = 0;
+    let packageRevenueThisMonth = 0;
+    let packageConversionRate = 0;
+    try {
+      const [pkgCount, pkgRevenue, pkg, single] = await Promise.all([
+        prisma.therapySessionPackage.count({ where: { status: "active" } }),
+        prisma.therapySessionPackage.aggregate({
+          _sum: { totalPaid: true },
+          where: { createdAt: { gte: monthStart } },
+        }),
+        prisma.therapyBooking.count({
+          where: {
+            status: { in: ["confirmed", "completed"] },
+            packageId: { not: null },
+          },
+        }),
+        prisma.therapyBooking.count({
+          where: {
+            status: { in: ["confirmed", "completed"] },
+            packageId: null,
+          },
+        }),
+      ]);
+      activePackagesCount = pkgCount;
+      packageRevenueThisMonth = Number(pkgRevenue._sum.totalPaid ?? 0);
+      const total = pkg + single;
+      packageConversionRate = total > 0 ? Math.round((pkg / total) * 100) : 0;
+    } catch {
+      // keep zero defaults
+    }
 
     return NextResponse.json({
       success: true,
@@ -74,7 +80,7 @@ export async function GET() {
           pendingTherapists,
           sessionsThisMonth,
           activePackagesCount,
-          packageRevenueThisMonth: Number(packageRevenueThisMonth._sum.totalPaid ?? 0),
+          packageRevenueThisMonth,
           packageConversionRate,
         },
         pendingApplications,

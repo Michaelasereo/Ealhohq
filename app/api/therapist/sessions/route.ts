@@ -9,6 +9,32 @@ import {
   watTodayDateString,
 } from "@/lib/wat-datetime";
 
+const therapistSessionsSelect = {
+  id: true,
+  date: true,
+  startTime: true,
+  endTime: true,
+  status: true,
+  sessionType: true,
+  patient: { select: { id: true, fullName: true, email: true } },
+  session: {
+    select: {
+      id: true,
+      sessionNumber: true,
+      status: true,
+      notesGenerated: true,
+      note: {
+        select: {
+          id: true,
+          noteType: true,
+          isEdited: true,
+          editedAt: true,
+        },
+      },
+    },
+  },
+} as const;
+
 export async function GET(req: Request) {
   try {
     const supabase = await createClient();
@@ -37,24 +63,7 @@ export async function GET(req: Request) {
           status: "confirmed",
           date: { gte: todayStart },
         },
-        include: {
-          patient: { select: { id: true, fullName: true, email: true } },
-          package: {
-            select: { totalSessions: true, usedSessions: true, packageType: true },
-          },
-          session: {
-            include: {
-              note: {
-                select: {
-                  id: true,
-                  noteType: true,
-                  isEdited: true,
-                  editedAt: true,
-                },
-              },
-            },
-          },
-        },
+        select: therapistSessionsSelect,
         orderBy: [{ date: "asc" }, { startTime: "asc" }],
         take: 80,
       });
@@ -74,24 +83,7 @@ export async function GET(req: Request) {
           therapistId: therapist.id,
           status: "completed",
         },
-        include: {
-          patient: { select: { id: true, fullName: true, email: true } },
-          package: {
-            select: { totalSessions: true, usedSessions: true, packageType: true },
-          },
-          session: {
-            include: {
-              note: {
-                select: {
-                  id: true,
-                  noteType: true,
-                  isEdited: true,
-                  editedAt: true,
-                },
-              },
-            },
-          },
-        },
+        select: therapistSessionsSelect,
         orderBy: [{ date: "desc" }, { startTime: "desc" }],
         take: 50,
       });
@@ -104,24 +96,7 @@ export async function GET(req: Request) {
         therapistId: therapist.id,
         status: { in: ["confirmed", "completed", "cancelled"] },
       },
-      include: {
-        patient: { select: { id: true, fullName: true, email: true } },
-        package: {
-          select: { totalSessions: true, usedSessions: true, packageType: true },
-        },
-        session: {
-          include: {
-            note: {
-              select: {
-                id: true,
-                noteType: true,
-                isEdited: true,
-                editedAt: true,
-              },
-            },
-          },
-        },
-      },
+      select: therapistSessionsSelect,
       orderBy: [{ date: "desc" }, { startTime: "desc" }],
       take: 50,
     });

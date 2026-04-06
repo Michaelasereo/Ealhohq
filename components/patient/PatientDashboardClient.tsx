@@ -703,7 +703,7 @@ export function PatientDashboardClient() {
                         </p>
                         <div className="mt-2 h-2 w-full rounded-full bg-muted">
                           <div
-                            className="h-2 rounded-full bg-[#1A7A4A]"
+                            className="h-2 rounded-full bg-primary"
                             style={{ width: `${progress}%` }}
                           />
                         </div>

@@ -231,7 +231,7 @@ export default function TherapistClientProfilePage() {
           </Link>
         </div>
         {data.activePackage ? (
-          <div className="mt-3 rounded-lg border border-[#1A7A4A]/20 bg-[#F0FAF4] p-3 text-sm">
+          <div className="mt-3 rounded-lg border border-primary/20 bg-primary/10 p-3 text-sm">
             <p className="font-medium">
               Active package: {data.activePackage.totalSessions}-session package
             </p>
