@@ -267,6 +267,7 @@ export default function AuthVerifyPage() {
     setResendLoading(true);
     setError(null);
     const name = sessionStorage.getItem(SK.name) ?? email.split("@")[0];
+    const role = sessionStorage.getItem(SK.role) ?? "patient";
     const r = await fetch("/api/auth/send-otp", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -274,6 +275,7 @@ export default function AuthVerifyPage() {
         email,
         name,
         type: "signup",
+        signupRole: role === "therapist" ? "therapist" : "patient",
       }),
     });
     const j = (await r.json()) as { success?: boolean; error?: string };

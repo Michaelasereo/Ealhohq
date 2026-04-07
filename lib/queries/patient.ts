@@ -2,6 +2,7 @@ import {
   canonicalEmailForGuestMatch,
   isGoogleHostedConsumerDomain,
 } from "@/lib/email/gmail-canonical";
+import { syncTherapyCreditBalanceFromTransactions } from "@/lib/credits/sync-balance-from-transactions";
 import { prisma } from "@/lib/prisma/client";
 
 import { mergePatientRecordsIntoPrimary } from "@/lib/queries/patient-merge";
@@ -125,6 +126,7 @@ export async function ensureRegisteredPatientForUser(user: {
       guestIds,
       mergeCompleted,
     );
+    await syncTherapyCreditBalanceFromTransactions(merged.id);
     return { patient: merged };
   }
 
@@ -163,6 +165,10 @@ export async function ensureRegisteredPatientForUser(user: {
   });
 
   await markGuestMergePendingIfNeeded(user.id, guestIds, mergeCompleted);
+
+  if (guestIds.length > 0) {
+    await syncTherapyCreditBalanceFromTransactions(created.id);
+  }
 
   return { patient: created };
 }

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 
 import { getAvailableSlots } from "@/lib/availability/slots";
 import { ensureRegisteredPatientForUser } from "@/lib/queries/patient";
@@ -13,6 +14,76 @@ import { watDayStart } from "@/lib/wat-datetime";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const TIME_RE = /^\d{2}:\d{2}$/;
+
+/** Second arg to `pg_advisory_xact_lock` — isolates guest-email locks from any other advisory use. */
+const GUEST_PATIENT_ADVISORY_KEY_2 = 5_847_291;
+
+/**
+ * Find or create the guest `therapy_patients` row for this email inside a transaction,
+ * using an advisory lock so concurrent bookings cannot each create a duplicate row.
+ */
+async function resolveGuestPatientIdInTransaction(
+  tx: Prisma.TransactionClient,
+  input: { gName: string; emailNorm: string; gPhoneRaw: string },
+): Promise<string> {
+  const { gName, emailNorm, gPhoneRaw } = input;
+  const lockKey = isGoogleHostedConsumerDomain(emailNorm)
+    ? canonicalEmailForGuestMatch(emailNorm)
+    : emailNorm;
+
+  await tx.$executeRaw`
+    SELECT pg_advisory_xact_lock(
+      hashtext(${lockKey}::text),
+      ${GUEST_PATIENT_ADVISORY_KEY_2}
+    )
+  `;
+
+  let existingGuest = await tx.therapyPatient.findFirst({
+    where: {
+      profileId: null,
+      email: { equals: emailNorm, mode: "insensitive" },
+    },
+    orderBy: { createdAt: "asc" },
+  });
+
+  if (!existingGuest && isGoogleHostedConsumerDomain(emailNorm)) {
+    const canon = canonicalEmailForGuestMatch(emailNorm);
+    const candidates = await tx.therapyPatient.findMany({
+      where: {
+        profileId: null,
+        OR: [
+          { email: { endsWith: "@gmail.com", mode: "insensitive" } },
+          { email: { endsWith: "@googlemail.com", mode: "insensitive" } },
+        ],
+      },
+      orderBy: { createdAt: "asc" },
+    });
+    existingGuest =
+      candidates.find((g) => canonicalEmailForGuestMatch(g.email) === canon) ??
+      null;
+  }
+
+  if (existingGuest) {
+    await tx.therapyPatient.update({
+      where: { id: existingGuest.id },
+      data: {
+        fullName: gName,
+        phone: existingGuest.phone || gPhoneRaw || "",
+        email: emailNorm,
+      },
+    });
+    return existingGuest.id;
+  }
+
+  const guest = await tx.therapyPatient.create({
+    data: {
+      fullName: gName,
+      email: emailNorm,
+      phone: gPhoneRaw || "",
+    },
+  });
+  return guest.id;
+}
 
 export async function POST(req: Request) {
   try {
@@ -200,51 +271,13 @@ export async function POST(req: Request) {
         typeof guestPhone === "string" ? guestPhone.trim() : "";
       const emailNorm = gEmail.toLowerCase();
 
-      let existingGuest = await prisma.therapyPatient.findFirst({
-        where: {
-          profileId: null,
-          email: { equals: emailNorm, mode: "insensitive" },
-        },
-        orderBy: { createdAt: "asc" },
-      });
-
-      if (!existingGuest && isGoogleHostedConsumerDomain(emailNorm)) {
-        const canon = canonicalEmailForGuestMatch(emailNorm);
-        const candidates = await prisma.therapyPatient.findMany({
-          where: {
-            profileId: null,
-            OR: [
-              { email: { endsWith: "@gmail.com", mode: "insensitive" } },
-              { email: { endsWith: "@googlemail.com", mode: "insensitive" } },
-            ],
-          },
-          orderBy: { createdAt: "asc" },
-        });
-        existingGuest =
-          candidates.find((g) => canonicalEmailForGuestMatch(g.email) === canon) ??
-          null;
-      }
-
-      if (existingGuest) {
-        resolvedPatientId = existingGuest.id;
-        await prisma.therapyPatient.update({
-          where: { id: existingGuest.id },
-          data: {
-            fullName: gName,
-            phone: existingGuest.phone || gPhoneRaw || "",
-            email: emailNorm,
-          },
-        });
-      } else {
-        const guest = await prisma.therapyPatient.create({
-          data: {
-            fullName: gName,
-            email: emailNorm,
-            phone: gPhoneRaw || "",
-          },
-        });
-        resolvedPatientId = guest.id;
-      }
+      resolvedPatientId = await prisma.$transaction((tx) =>
+        resolveGuestPatientIdInTransaction(tx, {
+          gName,
+          emailNorm,
+          gPhoneRaw,
+        }),
+      );
     }
 
     const isRegisteredPatient = isRegisteredBooking || registeredViaAuth;

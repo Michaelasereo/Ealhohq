@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { finalizeCreditPurchase } from "@/lib/payment/finalize-credit-purchase";
 import { getPaystackSecretKey } from "@/lib/paystack/server-keys";
-import { getPatientByProfileId } from "@/lib/queries/patient";
+import { ensureRegisteredPatientForUser } from "@/lib/queries/patient";
 import { createClient } from "@/lib/supabase/server";
 
 function parseMetadata(raw: unknown): Record<string, string> {
@@ -51,7 +51,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const patient = await getPatientByProfileId(user.id);
+    const patient = (await ensureRegisteredPatientForUser(user))?.patient ?? null;
     if (!patient) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }

@@ -21,6 +21,10 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Ealho Therapy",
   description: "AI-powered therapy booking and sessions for Nigeria",
+  icons: {
+    icon: [{ url: "/favicon-ealho.png", type: "image/png" }],
+    apple: [{ url: "/favicon-ealho.png", type: "image/png" }],
+  },
 };
 
 export default function RootLayout({

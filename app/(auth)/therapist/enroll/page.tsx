@@ -178,6 +178,7 @@ export default function TherapistEnrollPage() {
         email: draft.email.trim(),
         name: draft.fullName.trim(),
         type: "signup",
+        signupRole: "therapist",
       }),
     });
     const json = (await res.json()) as { success?: boolean; error?: string };

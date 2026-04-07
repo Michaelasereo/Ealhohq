@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { syncTherapyCreditBalanceFromTransactions } from "@/lib/credits/sync-balance-from-transactions";
 import { tierFromBalance } from "@/lib/credits/purchase-config";
 import { ensureRegisteredPatientForUser } from "@/lib/queries/patient";
 import { createClient } from "@/lib/supabase/server";
@@ -22,6 +23,8 @@ export async function GET() {
         data: { balance: 0, tier: tierFromBalance(0) },
       });
     }
+
+    await syncTherapyCreditBalanceFromTransactions(patient.id);
 
     const credit = await prisma.therapyCredit.findUnique({
       where: { patientId: patient.id },

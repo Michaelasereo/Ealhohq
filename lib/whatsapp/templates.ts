@@ -89,17 +89,32 @@ If you have questions, reply to this message.`,
     time: string;
     sessionType: string;
     isAnonymous?: boolean;
-  }) => `Hi ${params.therapistGreetingName}! 📅
+    /** Why they’re booking (guest flow / intake selection) */
+    bookingReason?: string | null;
+    /** Client’s professional background (healthcare role, etc.) */
+    professionalType?: string | null;
+  }) => {
+    const reason = params.bookingReason?.trim();
+    const pro = params.professionalType?.trim();
+    const reasonLine = reason
+      ? `📝 Reason: ${reason.length > 420 ? `${reason.slice(0, 419)}…` : reason}`
+      : "";
+    const proLine = pro
+      ? `🏥 Client background: ${pro.length > 280 ? `${pro.slice(0, 279)}…` : pro}`
+      : "";
+
+    return `Hi ${params.therapistGreetingName}! 📅
 
 New session booked.
 
-${params.isAnonymous ? "🔒 Anonymous Client" : `👤 ${params.patientDisplay}`}
-📅 ${params.date}
+${params.isAnonymous ? `🔒 Anonymous — alias: ${params.patientDisplay}` : `👤 ${params.patientDisplay}`}
+${reasonLine ? `${reasonLine}\n` : ""}${proLine ? `${proLine}\n` : ""}📅 ${params.date}
 🕐 ${params.time} WAT
 📋 ${params.sessionType === "intake" ? "Intake Assessment" : "Follow-up Session"}
 
-Log in to view your schedule:
-${appUrl()}/therapist/dashboard`,
+View your schedule:
+${appUrl()}/therapist/dashboard`;
+  },
 
   inviteSetup: (params: {
     name: string;

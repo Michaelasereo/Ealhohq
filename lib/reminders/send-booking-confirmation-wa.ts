@@ -80,6 +80,8 @@ export async function sendBookingConfirmationWhatsAppIfPhone(
         time,
         sessionType: booking.sessionType,
         isAnonymous: booking.isAnonymous,
+        bookingReason: booking.guestBookingReason,
+        professionalType: booking.professionalType,
       }),
     }).catch((err) => console.error("WhatsApp therapist notify failed:", err));
   }

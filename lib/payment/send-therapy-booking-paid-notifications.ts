@@ -1,11 +1,19 @@
 import type { Prisma } from "@prisma/client";
 
+import { getAuthUserEmailById } from "@/lib/auth/auth-user-email";
+import {
+  formatBookingDateLong,
+  formatSlotTo12h,
+} from "@/lib/booking/display-wat";
 import { bookingConfirmation, generateGoogleCalendarLink } from "@/lib/email/templates/booking-confirmation";
+import { therapistNewBookingEmail } from "@/lib/email/templates/therapist-new-booking";
 import { buildBookingEmailLayoutParams } from "@/lib/emails/build-booking-email-params";
+import { getAppOrigin } from "@/lib/emails/utils";
 import { getBookingRecipientEmail } from "@/lib/emails/booking-recipient";
 import { sendBookingConfirmationWhatsAppIfPhone } from "@/lib/reminders/send-booking-confirmation-wa";
 import { sessionJoinUrl } from "@/lib/reminders/format-session-link";
 import { sendTransactionalEmail } from "@/lib/reminders/send-email";
+import { therapistFirstNameForGreeting } from "@/lib/therapist-display-name";
 import { getDisplayName } from "@/lib/utils/patient-display";
 import { bookingDateStartToIso } from "@/lib/wat-datetime";
 
@@ -73,5 +81,45 @@ export async function sendTherapyBookingPaidNotifications(
     await sendBookingConfirmationWhatsAppIfPhone(booking);
   } catch (waErr) {
     console.error("Booking confirmation WhatsApp:", waErr);
+  }
+
+  try {
+    const therapistEmail = await getAuthUserEmailById(
+      booking.therapist.profileId,
+    );
+    if (therapistEmail) {
+      const date = formatBookingDateLong(booking.date);
+      const time = formatSlotTo12h(booking.startTime);
+      const patientDisplay = booking.isAnonymous
+        ? (booking.clientAlias ?? "Anonymous client")
+        : (booking.guestName ?? booking.patient?.fullName ?? "Client");
+      const origin = getAppOrigin().replace(/\/$/, "");
+      const tpl = therapistNewBookingEmail({
+        therapistFirstName: therapistFirstNameForGreeting(
+          booking.therapist.profile.fullName,
+        ),
+        patientDisplay,
+        date,
+        time,
+        sessionTypeLabel:
+          booking.sessionType === "intake"
+            ? "Intake Assessment"
+            : "Follow-up Session",
+        isAnonymous: booking.isAnonymous,
+        bookingReason: booking.guestBookingReason,
+        professionalType: booking.professionalType,
+        dashboardUrl: `${origin}/therapist/dashboard`,
+      });
+      const sent = await sendTransactionalEmail({
+        to: therapistEmail,
+        subject: tpl.subject,
+        html: tpl.html,
+      });
+      if (!sent.success) {
+        console.error("Therapist new-booking email:", sent.error);
+      }
+    }
+  } catch (therapistMailErr) {
+    console.error("Therapist new-booking email failed:", therapistMailErr);
   }
 }

@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { findUserIdByEmail } from "@/lib/auth/find-user-by-email";
+import { isTherapistSignupAllowed } from "@/lib/auth/therapist-signup-allowlist";
 import { recordConsentRecords } from "@/lib/consents/record-consent-server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 
@@ -20,28 +22,6 @@ const bodySchema = z.object({
 /** OTP rows use type `signup` for all app flows (send-otp always sends signup). */
 const OTP_TYPE = "signup" as const;
 const MAX_ATTEMPTS = 5;
-
-async function findUserIdByEmail(
-  admin: ReturnType<typeof createServiceRoleClient>,
-  email: string,
-): Promise<string | null> {
-  let page = 1;
-  const perPage = 200;
-  for (let i = 0; i < 10; i++) {
-    const { data, error } = await admin.auth.admin.listUsers({ page, perPage });
-    if (error) {
-      console.error("listUsers:", error);
-      return null;
-    }
-    const u = data.users.find(
-      (x) => x.email?.toLowerCase() === email.toLowerCase(),
-    );
-    if (u) return u.id;
-    if (data.users.length < perPage) break;
-    page += 1;
-  }
-  return null;
-}
 
 export async function POST(req: Request) {
   try {
@@ -127,6 +107,30 @@ export async function POST(req: Request) {
         error: "Invalid code",
         attemptsLeft: MAX_ATTEMPTS - attempts,
       });
+    }
+
+    if (flow === "signup" && role === "therapist") {
+      const gate = await isTherapistSignupAllowed(supabase, email);
+      if (!gate.allowed) {
+        if (gate.reason === "patient_conflict") {
+          return NextResponse.json(
+            {
+              success: false,
+              error:
+                "This email is already registered as a client. Use a different email for your therapist account or contact support.",
+            },
+            { status: 403 },
+          );
+        }
+        return NextResponse.json(
+          {
+            success: false,
+            error:
+              "Therapist sign-up is limited to invited emails. If you were invited, use the same email you were given. Otherwise contact us at hello@ealhohq.com.",
+          },
+          { status: 403 },
+        );
+      }
     }
 
     const userMeta: Record<string, string> = {

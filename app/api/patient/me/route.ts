@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { syncTherapyCreditBalanceFromTransactions } from "@/lib/credits/sync-balance-from-transactions";
 import { CREDIT_PACKAGES } from "@/lib/credits/packages";
 import { mapSessionForPatient } from "@/lib/mappers/patient-session";
 import { ensureRegisteredPatientForUser } from "@/lib/queries/patient";
@@ -79,7 +80,10 @@ export async function GET() {
 
     const sessions = sessionsRaw.map(mapSessionForPatient);
 
-    const credit = patient.credits;
+    await syncTherapyCreditBalanceFromTransactions(patient.id);
+    const credit = await prisma.therapyCredit.findUnique({
+      where: { patientId: patient.id },
+    });
     const txs = await prisma.therapyCreditTransaction.findMany({
       where: { patientId: patient.id },
       orderBy: { createdAt: "desc" },
@@ -123,7 +127,7 @@ export async function GET() {
         sessions,
         credits: credit
           ? {
-              balance: credit.balance,
+              balance: Number(credit.balance),
               tier: tierLabel(credit.tier),
             }
           : { balance: 0, tier: "Bronze" },

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { syncTherapyCreditBalanceFromTransactions } from "@/lib/credits/sync-balance-from-transactions";
 import { tierFromBalance } from "@/lib/credits/purchase-config";
 import { ensureRegisteredPatientForUser } from "@/lib/queries/patient";
 import { createClient } from "@/lib/supabase/server";
@@ -93,6 +94,9 @@ export async function GET(req: Request) {
     });
 
     const patient = (await ensureRegisteredPatientForUser(user))?.patient ?? null;
+    if (patient) {
+      await syncTherapyCreditBalanceFromTransactions(patient.id);
+    }
 
     const profile = await prisma.sharedProfile.findUnique({
       where: { id: user.id },

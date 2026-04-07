@@ -6,7 +6,7 @@ import {
 } from "@/lib/credits/purchase-config";
 import { generateReference } from "@/lib/paystack/client";
 import { getPaystackSecretKey } from "@/lib/paystack/server-keys";
-import { getPatientByProfileId } from "@/lib/queries/patient";
+import { ensureRegisteredPatientForUser } from "@/lib/queries/patient";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma/client";
 
@@ -41,7 +41,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const patient = await getPatientByProfileId(user.id);
+    const patient = (await ensureRegisteredPatientForUser(user))?.patient ?? null;
     if (!patient) {
       return NextResponse.json(
         { error: "Client profile required" },

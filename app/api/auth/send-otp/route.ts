@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { isTherapistSignupAllowed } from "@/lib/auth/therapist-signup-allowlist";
 import { buildOTPEmail } from "@/lib/emails/otp-verification";
 import { generateOTP, getOTPExpiry } from "@/lib/otp/generate";
 import { sendTransactionalEmail } from "@/lib/reminders/send-email";
@@ -12,6 +13,8 @@ const bodySchema = z.object({
   email: z.string().email(),
   name: z.string().min(1).max(200).optional().default(""),
   type: z.enum(["signup", "login", "password_reset"]),
+  /** When `type` is `signup`, use `therapist` for therapist enrollment; default `patient`. */
+  signupRole: z.enum(["patient", "therapist"]).optional(),
 });
 
 const OTP_EXPIRY_MINUTES = 10;
@@ -27,7 +30,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const { email: rawEmail, name, type } = parsed.data;
+    const { email: rawEmail, name, type, signupRole } = parsed.data;
     const email = rawEmail.trim().toLowerCase();
 
     let supabase;
@@ -38,6 +41,30 @@ export async function POST(req: Request) {
         { success: false, error: "Server configuration error" },
         { status: 500 },
       );
+    }
+
+    if (type === "signup" && signupRole === "therapist") {
+      const gate = await isTherapistSignupAllowed(supabase, email);
+      if (!gate.allowed) {
+        if (gate.reason === "patient_conflict") {
+          return NextResponse.json(
+            {
+              success: false,
+              error:
+                "This email is already registered as a client. Use a different email for your therapist account.",
+            },
+            { status: 403 },
+          );
+        }
+        return NextResponse.json(
+          {
+            success: false,
+            error:
+              "Therapist sign-up is limited to invited emails. Contact us at hello@ealhohq.com if you need access.",
+          },
+          { status: 403 },
+        );
+      }
     }
 
     const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();

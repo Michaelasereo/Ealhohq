@@ -9,7 +9,10 @@
     "lint": "eslint",
     "add-credits": "npx tsx scripts/add-credits.ts",
     "seed:video-session": "npx tsx scripts/seed-video-test-session.ts",
-    "seed:discount": "npx tsx scripts/seed-discount-code.ts"
+    "seed:discount": "npx tsx scripts/seed-discount-code.ts",
+    "db:inspect-patient-email": "npx tsx scripts/inspect-patient-email.ts",
+    "db:inspect-profile": "npx tsx scripts/inspect-profile-id.ts",
+    "db:repair-merge-guest": "npx tsx scripts/repair-merge-guest-to-profile.ts"
   },
   "prisma": {
     "seed": "ts-node --compiler-options {\"module\":\"CommonJS\"} prisma/seed.ts"
