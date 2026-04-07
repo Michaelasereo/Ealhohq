@@ -4,6 +4,15 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   // Keep Prisma + generated client out of the server bundle so query-engine binaries ship correctly on Netlify.
   serverExternalPackages: ["@prisma/client", ".prisma/client"],
+  async redirects() {
+    return [
+      {
+        source: "/favicon.ico",
+        destination: "/favicon-ealho.png",
+        permanent: false,
+      },
+    ];
+  },
   images: {
     remotePatterns: [
       {
