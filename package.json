@@ -12,7 +12,8 @@
     "seed:discount": "npx tsx scripts/seed-discount-code.ts",
     "db:inspect-patient-email": "npx tsx scripts/inspect-patient-email.ts",
     "db:inspect-profile": "npx tsx scripts/inspect-profile-id.ts",
-    "db:repair-merge-guest": "npx tsx scripts/repair-merge-guest-to-profile.ts"
+    "db:repair-merge-guest": "npx tsx scripts/repair-merge-guest-to-profile.ts",
+    "seed:blog": "npx tsx scripts/seed-blog-config.ts"
   },
   "prisma": {
     "seed": "ts-node --compiler-options {\"module\":\"CommonJS\"} prisma/seed.ts"
@@ -41,6 +42,8 @@
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "react-hook-form": "^7.71.1",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1",
     "resend": "^6.10.0",
     "shadcn": "^4.1.1",
     "sonner": "^2.0.7",

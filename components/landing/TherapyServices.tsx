@@ -4,6 +4,7 @@ import { Calendar, FileText, Lock, Video } from "lucide-react";
 import { motion, useInView } from "framer-motion";
 import { useId, useMemo, useRef } from "react";
 
+import { GlassPill } from "@/components/landing/GlassPill";
 import { cn } from "@/lib/utils";
 import { useBookingStore } from "@/stores/bookingStore";
 
@@ -324,14 +325,19 @@ export function TherapyServices() {
     >
       <div className="mx-auto max-w-[1200px]">
         <div className="mx-auto max-w-[640px] px-4 text-center sm:px-10 md:px-14">
-          <motion.p
+          <motion.div
             initial={{ opacity: 0, y: 8 }}
             animate={inView ? { opacity: 1, y: 0 } : {}}
             transition={{ duration: 0.35 }}
-            className="inline-flex rounded-full border border-[#dddbd0] bg-[#faf8f5] px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#807a5a]"
+            className="flex justify-center"
           >
-            [ THERAPY SERVICES ]
-          </motion.p>
+            <GlassPill className="rotate-0">
+              <span className="inline-flex items-center gap-1.5">
+                <span>Therapy services</span>
+                <span aria-hidden>🩺</span>
+              </span>
+            </GlassPill>
+          </motion.div>
           <motion.h2
             initial={{ opacity: 0, y: 10 }}
             animate={inView ? { opacity: 1, y: 0 } : {}}

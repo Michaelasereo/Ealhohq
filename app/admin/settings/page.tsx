@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 
+import { SiteContentSettings } from "@/components/admin/SiteContentSettings";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -13,6 +14,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { createClient } from "@/lib/supabase/client";
 
 type SettingsPayload = {
@@ -215,7 +217,28 @@ export default function AdminSettingsPage() {
       )}
       {ok && <p className="text-sm text-primary">{ok}</p>}
 
-      <Card>
+      <Tabs defaultValue="site-content" className="space-y-6">
+        <TabsList variant="line" className="w-full justify-start overflow-x-auto rounded-none bg-transparent p-0">
+          <TabsTrigger value="site-content" className="h-10 flex-none px-4">
+            Site Content
+          </TabsTrigger>
+          <TabsTrigger value="platform" className="h-10 flex-none px-4">
+            Platform
+          </TabsTrigger>
+          <TabsTrigger value="payment" className="h-10 flex-none px-4">
+            Payment
+          </TabsTrigger>
+          <TabsTrigger value="account" className="h-10 flex-none px-4">
+            Admin Account
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="site-content">
+          <SiteContentSettings />
+        </TabsContent>
+
+        <TabsContent value="platform">
+          <Card>
         <CardHeader>
           <CardTitle>Platform</CardTitle>
           <CardDescription>
@@ -315,8 +338,10 @@ export default function AdminSettingsPage() {
           </Button>
         </CardContent>
       </Card>
+        </TabsContent>
 
-      <Card>
+        <TabsContent value="payment">
+          <Card>
         <CardHeader>
           <CardTitle>Payment (Paystack)</CardTitle>
           <CardDescription>
@@ -407,8 +432,10 @@ export default function AdminSettingsPage() {
           </div>
         </CardContent>
       </Card>
+        </TabsContent>
 
-      <Card>
+        <TabsContent value="account">
+          <Card>
         <CardHeader>
           <CardTitle>Admin account</CardTitle>
           <CardDescription>Profile name and password for this login.</CardDescription>
@@ -475,6 +502,8 @@ export default function AdminSettingsPage() {
           </div>
         </CardContent>
       </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

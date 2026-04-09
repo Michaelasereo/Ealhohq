@@ -23,6 +23,10 @@ import {
   therapistRejectionHtml,
   therapistRejectionSubject,
 } from "@/lib/emails/therapist-rejection";
+import {
+  burnoutGuideEmailHtml,
+  burnoutGuideEmailSubject,
+} from "@/lib/emails/burnout-guide";
 
 function getResend(): Resend | null {
   const key = process.env.RESEND_API_KEY?.trim();
@@ -34,7 +38,7 @@ function getResend(): Resend | null {
 export function getResendFromAddress(): string {
   const raw = process.env.RESEND_FROM_EMAIL?.trim();
   if (raw) return raw;
-  return "Ealho Therapy <noreply@ealho.com>";
+  return "Michael from Ealho <hello@ealho.com>";
 }
 
 export type SendEmailResult =
@@ -46,6 +50,7 @@ export async function sendTransactionalEmail(params: {
   subject: string;
   html: string;
   text?: string;
+  attachments?: { filename: string; content: Buffer }[];
 }): Promise<SendEmailResult> {
   const resend = getResend();
   if (!resend) {
@@ -59,6 +64,14 @@ export async function sendTransactionalEmail(params: {
     subject: params.subject,
     html: params.html,
     ...(params.text ? { text: params.text } : {}),
+    ...(params.attachments?.length
+      ? {
+          attachments: params.attachments.map((a) => ({
+            filename: a.filename,
+            content: a.content,
+          })),
+        }
+      : {}),
   });
 
   if (error) {
@@ -130,5 +143,18 @@ export async function sendTherapistRejectionEmail(
     to,
     subject: therapistRejectionSubject,
     html: therapistRejectionHtml(reason),
+  });
+}
+
+export async function sendBurnoutGuideEmail(params: {
+  to: string;
+  firstName: string;
+  attachment: { filename: string; content: Buffer };
+}): Promise<SendEmailResult> {
+  return sendTransactionalEmail({
+    to: params.to,
+    subject: burnoutGuideEmailSubject,
+    html: burnoutGuideEmailHtml({ firstName: params.firstName }),
+    attachments: [params.attachment],
   });
 }

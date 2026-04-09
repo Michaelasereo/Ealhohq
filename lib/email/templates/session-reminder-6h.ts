@@ -30,7 +30,7 @@ export function sessionReminder6h(params: {
 
   const appUrl =
     process.env.NEXT_PUBLIC_APP_URL?.trim().replace(/\/$/, "") ??
-    "https://ealhohq.com";
+    "https://ealho.com";
 
   const headerLogo = emailMarkLogoImg({ maxHeightPx: 48, align: "center" });
 
@@ -41,8 +41,11 @@ export function sessionReminder6h(params: {
 <html>
 <body style="margin:0;padding:0;background:#F5F2EC;
              font-family:-apple-system,BlinkMacSystemFont,
-             'Segoe UI',sans-serif;">
-  <div style="max-width:520px;margin:0 auto;padding:32px 16px;">
+             'Segoe UI',sans-serif;width:100% !important;height:auto !important;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;background:#F5F2EC;">
+    <tr>
+      <td align="center" style="padding:32px 16px;height:auto !important;">
+  <div style="max-width:520px;margin:0 auto;height:auto !important;">
 
     <div style="text-align:center;margin-bottom:24px;">
       ${headerLogo}
@@ -51,12 +54,13 @@ export function sessionReminder6h(params: {
     <div style="background:#FFFFFF;border-radius:16px;
                 padding:32px;text-align:center;">
 
-      <div style="width:56px;height:56px;background:#F5F2EC;
-                  border-radius:50%;margin:0 auto 16px;
-                  display:flex;align-items:center;
-                  justify-content:center;font-size:24px;">
-        ⏰
-      </div>
+      <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin:0 auto 16px;">
+        <tr>
+          <td align="center" valign="middle" style="width:56px;height:56px;background:#F5F2EC;border-radius:28px;font-size:24px;line-height:56px;">
+            ⏰
+          </td>
+        </tr>
+      </table>
 
       <h2 style="font-size:20px;font-weight:700;
                  color:#1A1A1A;margin:0 0 8px;">
@@ -109,6 +113,9 @@ export function sessionReminder6h(params: {
       Ealho Technologies Limited · Lagos, Nigeria
     </p>
   </div>
+      </td>
+    </tr>
+  </table>
 </body>
 </html>
     `,

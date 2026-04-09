@@ -43,7 +43,9 @@ export function emailShell(inner: string): string {
 export function emailMarkLogoUrl(): string {
   const override = process.env.EMAIL_LOGO_MARK_URL?.trim();
   if (override) return override;
-  return `${getAppOrigin()}/Ealho-mark.png`;
+  // Default to a logo URL that is confirmed live on production.
+  // `Email-logo.png` may exist locally but 404 on production until deployed.
+  return `${getAppOrigin()}/Ealho-logo.svg`;
 }
 
 /**
@@ -53,14 +55,16 @@ export function emailMarkLogoImg(options?: {
   maxHeightPx?: number;
   align?: "left" | "center";
 }): string {
-  const maxH = options?.maxHeightPx ?? 52;
+  const maxH = options?.maxHeightPx ?? 42;
+  const aspectRatio = 249 / 90;
+  const widthPx = Math.round(maxH * aspectRatio);
   const align = options?.align ?? "center";
   const src = escapeHtml(emailMarkLogoUrl());
   const tableAlign = align === "left" ? "left" : "center";
   const margin = align === "left" ? "margin:0;" : "margin:0 auto;";
   return `<table role="presentation" cellspacing="0" cellpadding="0" border="0" align="${tableAlign}" width="100%" style="${margin}"><tr><td align="${tableAlign}" style="padding:0;line-height:0;mso-line-height-rule:exactly;">
-    <img src="${src}" alt="Ealho" width="${maxH}" height="${maxH}" border="0"
-      style="display:block;border:0;outline:none;text-decoration:none;width:${maxH}px;height:${maxH}px;max-width:100%;" />
+    <img src="${src}" alt="Ealho Therapy" width="${widthPx}" height="${maxH}" border="0"
+      style="display:block;border:0;outline:none;text-decoration:none;width:${widthPx}px;height:${maxH}px;max-width:100%;" />
   </td></tr></table>`;
 }
 

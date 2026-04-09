@@ -42,7 +42,7 @@ export function sessionReminder24h(params: {
     "All sessions happen on the Ealho platform only — never move to WhatsApp, Zoom, or any other platform",
     "Your therapist will never ask to meet you outside of Ealho or request payment directly",
     "Do not share personal financial information with your therapist",
-    "If anything feels wrong, end the session and report it at safety@ealhohq.com",
+    "If anything feels wrong, end the session and report it at safety@ealho.com",
   ];
 
   const safetyRows = safetyRules
@@ -63,7 +63,7 @@ export function sessionReminder24h(params: {
 
   const appUrl =
     process.env.NEXT_PUBLIC_APP_URL?.trim().replace(/\/$/, "") ??
-    "https://ealhohq.com";
+    "https://ealho.com";
 
   const headerLogo = emailMarkLogoImg({ maxHeightPx: 48, align: "center" });
 
@@ -91,8 +91,11 @@ export function sessionReminder24h(params: {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
 </head>
-<body style="margin:0;padding:0;background:#F5F2EC;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
-  <div style="max-width:520px;margin:0 auto;padding:32px 16px;">
+<body style="margin:0;padding:0;background:#F5F2EC;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;width:100% !important;height:auto !important;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;background:#F5F2EC;">
+    <tr>
+      <td align="center" style="padding:32px 16px;height:auto !important;">
+  <div style="max-width:520px;margin:0 auto;height:auto !important;">
 
     <div style="text-align:center;margin-bottom:32px;">
       ${headerLogo}
@@ -184,7 +187,7 @@ export function sessionReminder24h(params: {
       <p style="font-size:12px;color:#C0392B;margin:0;">
         Nigeria Suicide Prevention Helpline:
         <strong>0800-800-2000</strong> (free, 24/7)
-        <br>Or email us: <strong>safety@ealhohq.com</strong>
+        <br>Or email us: <strong>safety@ealho.com</strong>
       </p>
     </div>
 
@@ -199,6 +202,9 @@ export function sessionReminder24h(params: {
     </p>
 
   </div>
+      </td>
+    </tr>
+  </table>
 </body>
 </html>
     `,

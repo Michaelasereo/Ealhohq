@@ -590,3 +590,100 @@ model ReferralPayout {
   @@index([status])
   @@map("referral_payouts")
 }
+
+// ─── MARKETING / CMS ───────────────────────────────
+
+model BlogPost {
+  id          String   @id @default(uuid()) @db.Uuid
+  title       String
+  slug        String   @unique
+  excerpt     String
+  content     String
+  coverImage  String?
+  category    String   @default("Mental Health")
+  tags        String[]
+  author      String   @default("Ealho Team")
+  authorRole  String   @default("Editorial Team")
+  authorPhoto String?
+  status      String   @default("draft") // draft | published
+  featured    Boolean  @default(false)
+  readingTime Int      @default(5)
+  metaTitle   String?
+  metaDesc    String?
+  publishedAt DateTime?
+  viewCount   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  feedbacks BlogPostFeedback[]
+
+  @@map("blog_posts")
+}
+
+model BlogPostFeedback {
+  id        String   @id @default(uuid()) @db.Uuid
+  postId    String   @db.Uuid
+  helpful   Boolean
+  createdAt DateTime @default(now())
+
+  post BlogPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@index([postId])
+  @@map("blog_post_feedback")
+}
+
+model SiteConfig {
+  id        String   @id @default(uuid()) @db.Uuid
+  key       String   @unique
+  value     String
+  updatedAt DateTime @updatedAt
+
+  @@map("site_config")
+}
+
+model Review {
+  id              String   @id @default(uuid()) @db.Uuid
+  authorName      String
+  authorRole      String?
+  authorLocation  String?
+  content         String
+  rating          Int
+  isAnonymous     Boolean  @default(true)
+  isApproved  Boolean  @default(false)
+  isPublished Boolean  @default(false)
+  isFeatured  Boolean  @default(false)
+  source      String   @default("platform") // platform | google | manual
+  createdAt   DateTime @default(now())
+
+  @@index([isPublished, isFeatured])
+  @@map("reviews")
+}
+
+model Subscriber {
+  id             String    @id @default(uuid()) @db.Uuid
+  name           String?
+  email          String    @unique
+  isAnonymous    Boolean   @default(false)
+  sequence       Int       @default(1)
+  lastEmailAt    DateTime?
+  unsubscribed   Boolean   @default(false)
+  unsubscribedAt DateTime?
+  source         String    @default("burnout_assessment")
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([unsubscribed, sequence])
+  @@index([createdAt])
+  @@map("subscribers")
+}
+
+model NewsletterSend {
+  id        String   @id @default(uuid()) @db.Uuid
+  subject   String
+  body      String
+  sentCount Int      @default(0)
+  sentBy    String?
+  createdAt DateTime @default(now())
+
+  @@map("newsletter_sends")
+}

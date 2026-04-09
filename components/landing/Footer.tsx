@@ -1,6 +1,9 @@
-import { Instagram, Linkedin } from "lucide-react";
+"use client";
+
+import { Instagram, Linkedin, Loader2 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import { useState } from "react";
 
 import { FooterBookSessionTrigger } from "@/components/landing/FooterBookSessionTrigger";
 
@@ -15,7 +18,9 @@ function XIcon({ className }: { className?: string }) {
 }
 
 const platformLinks = [
+  { href: "/", label: "Home" },
   { href: "/book", label: "Book a Session" },
+  { href: "/blog", label: "Blog" },
   { href: "/therapist/enroll", label: "For Therapists" },
   { href: "/#notes-ai", label: "Ealho Notes AI" },
   { href: "/for-organisations", label: "For Organisations" },
@@ -29,6 +34,33 @@ const resourceLinks = [
 ] as const;
 
 export function Footer() {
+  const [footerEmail, setFooterEmail] = useState("");
+  const [footerState, setFooterState] = useState<"idle" | "loading" | "done" | "error">("idle");
+
+  async function handleFooterSubscribe() {
+    if (!footerEmail || !footerEmail.includes("@")) return;
+    setFooterState("loading");
+    try {
+      const res = await fetch("/api/subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: footerEmail,
+          isAnonymous: true,
+          source: "footer",
+        }),
+      });
+      if (res.ok || res.status === 409) {
+        setFooterState("done");
+        setFooterEmail("");
+      } else {
+        setFooterState("error");
+      }
+    } catch {
+      setFooterState("error");
+    }
+  }
+
   return (
     <footer className="w-full bg-[#1A1A1A] text-white/60">
       <div className="mx-auto max-w-[1200px] px-4 py-12 sm:px-6 sm:py-16">
@@ -127,6 +159,41 @@ export function Footer() {
                 <li>privacy@ealho.com</li>
                 <li>Lagos, Nigeria</li>
               </ul>
+              <div className="mt-6">
+                <p className="text-xs font-semibold uppercase tracking-wider text-white/90">
+                  Newsletter
+                </p>
+                {footerState === "done" ? (
+                  <p className="mt-3 text-sm text-white/80">✓ You&apos;re subscribed.</p>
+                ) : (
+                  <div className="mt-3 flex gap-2">
+                    <input
+                      type="email"
+                      value={footerEmail}
+                      onChange={(e) => setFooterEmail(e.target.value)}
+                      placeholder="Your email"
+                      className="h-11 w-full rounded-xl border border-white/15 bg-transparent px-3 text-sm text-white placeholder:text-white/40 focus:border-white/35 focus:outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => void handleFooterSubscribe()}
+                      disabled={footerState === "loading"}
+                      className="inline-flex min-h-11 items-center justify-center rounded-xl bg-white px-4 text-sm font-medium text-[#1A1A1A] disabled:opacity-70"
+                    >
+                      {footerState === "loading" ? (
+                        <Loader2 className="size-4 animate-spin" />
+                      ) : (
+                        "Join"
+                      )}
+                    </button>
+                  </div>
+                )}
+                {footerState === "error" ? (
+                  <p className="mt-2 text-xs text-red-300">
+                    Could not subscribe right now. Try again.
+                  </p>
+                ) : null}
+              </div>
             </div>
           </div>
         </div>

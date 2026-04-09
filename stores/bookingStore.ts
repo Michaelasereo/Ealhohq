@@ -65,6 +65,9 @@ type BookingState = {
   /** Landing page: full booking modal */
   bookingModalOpen: boolean;
   setBookingModalOpen: (open: boolean) => void;
+  /** Burnout guide PDF lead capture (global dialog) */
+  burnoutFreebieModalOpen: boolean;
+  setBurnoutFreebieModalOpen: (open: boolean) => void;
 };
 
 export const useBookingStore = create<BookingState>((set) => ({
@@ -102,6 +105,8 @@ export const useBookingStore = create<BookingState>((set) => ({
   therapistEnroll: null,
   bookingModalOpen: false,
   setBookingModalOpen: (open) => set({ bookingModalOpen: open }),
+  burnoutFreebieModalOpen: false,
+  setBurnoutFreebieModalOpen: (open) => set({ burnoutFreebieModalOpen: open }),
   setTherapistEnroll: (partial) =>
     set((state) => {
       if (partial === null) {

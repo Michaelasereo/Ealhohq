@@ -1,39 +1,39 @@
 "use client";
 
-import { Calendar, Lock, Shield } from "lucide-react";
+import { ArrowRight, Calendar, FileText, Lock, Shield } from "lucide-react";
 import { motion } from "framer-motion";
 import Image from "next/image";
-import Link from "next/link";
+import { useEffect, useState } from "react";
 
+import { buttonVariants } from "@/components/ui/button";
+import { GlassPill } from "@/components/landing/GlassPill";
 import { figma } from "@/lib/figma-assets";
 import { figmaPrimaryCta } from "@/lib/ealho-link-styles";
 import { cn } from "@/lib/utils";
 import { useBookingStore } from "@/stores/bookingStore";
 
-function GlassPill({
-  children,
-  className,
-}: {
-  children: React.ReactNode;
-  className?: string;
-}) {
-  return (
-    <span
-      className={cn(
-        "inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-[30px] border border-white px-3 py-1 shadow-[inset_0_4px_4px_rgba(0,0,0,0.25)] backdrop-blur-[2px] rotate-[-8.6deg] sm:px-3.5 sm:py-1.5",
-        className,
-      )}
-      style={{ background: "var(--figma-glass)" }}
-    >
-      <span className="relative z-[1] text-[12px] font-normal leading-none tracking-[-0.02em] text-black sm:text-[16px]">
-        {children}
-      </span>
-    </span>
-  );
-}
+const HERO_BURNOUT_GUIDE_LABEL = "Get a free burnout guide";
 
 export function Hero() {
   const setBookingModalOpen = useBookingStore((s) => s.setBookingModalOpen);
+  const setBurnoutFreebieModalOpen = useBookingStore((s) => s.setBurnoutFreebieModalOpen);
+  const [secondaryCtaText, setSecondaryCtaText] = useState(HERO_BURNOUT_GUIDE_LABEL);
+
+  useEffect(() => {
+    void fetch("/api/site-config?keys=hero_cta_secondary_text")
+      .then((r) => r.json())
+      .then(
+        (d: {
+          data?: {
+            hero_cta_secondary_text?: string | null;
+          };
+        }) => {
+          const t = d.data?.hero_cta_secondary_text?.trim();
+          setSecondaryCtaText(t && t.length > 0 ? t : HERO_BURNOUT_GUIDE_LABEL);
+        },
+      )
+      .catch(() => {});
+  }, []);
 
   return (
     <section
@@ -97,13 +97,22 @@ export function Hero() {
               <Calendar size={18} strokeWidth={1.5} className="shrink-0" aria-hidden />
               <span>Book a Session</span>
             </button>
-            <Link
-              href="/organizations"
-              className="inline-flex min-h-11 items-center gap-1 text-[15px] font-medium text-primary sm:text-[16px]"
+            <button
+              type="button"
+              onClick={() => setBurnoutFreebieModalOpen(true)}
+              className="inline-flex min-h-11 items-center gap-3 text-sm font-semibold text-[#2C3B2D] transition-colors hover:text-[#1f2a20] sm:text-[15px]"
             >
-              For Organizations
-              <span aria-hidden>→</span>
-            </Link>
+              <FileText size={18} strokeWidth={1.5} className="shrink-0 text-[#2C3B2D]" aria-hidden />
+              <span>{secondaryCtaText}</span>
+              <span
+                className={cn(
+                  buttonVariants({ variant: "outline", size: "icon-lg" }),
+                  "size-12 min-h-12 min-w-12 shrink-0 rounded-full border-gray-300 bg-transparent text-[#2C3B2D] shadow-none hover:bg-black/[0.04]",
+                )}
+              >
+                <ArrowRight className="size-5 shrink-0" strokeWidth={2} aria-hidden />
+              </span>
+            </button>
           </motion.div>
         </div>
 

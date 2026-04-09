@@ -60,7 +60,7 @@ export async function POST(req: Request) {
           {
             success: false,
             error:
-              "Therapist sign-up is limited to invited emails. Contact us at hello@ealhohq.com if you need access.",
+              "Therapist sign-up is limited to invited emails. Contact us at hello@ealho.com if you need access.",
           },
           { status: 403 },
         );

@@ -7,6 +7,7 @@ import { LandingSection } from "@/components/landing/LandingSection";
 import { Navbar } from "@/components/landing/Navbar";
 import { NotesAI } from "@/components/landing/NotesAI";
 import { CaptureReferralFromUrl } from "@/components/referral/CaptureReferralFromUrl";
+import { Reviews } from "@/components/landing/Reviews";
 import { TherapistTeam } from "@/components/landing/TherapistTeam";
 
 export default function HomePage() {
@@ -17,6 +18,9 @@ export default function HomePage() {
       <main className="min-w-0 flex-1">
         <LandingSection delay={0}>
           <Hero />
+        </LandingSection>
+        <LandingSection delay={0.04}>
+          <Reviews />
         </LandingSection>
         <LandingSection delay={0.08}>
           <TherapyServices />

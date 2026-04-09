@@ -22,6 +22,7 @@ const EALHO_LOGO = "/Ealho-logo.svg";
 const SECTION_IDS = ["therapy-services", "notes-ai", "faq"] as const;
 
 const RESOURCE_LINKS = [
+  { href: "/burnout-assessment", label: "Burnout assessment", external: false },
   { href: "/#faq", label: "FAQ", external: false },
   { href: "/privacy", label: "Privacy Policy", external: true },
   { href: "/terms", label: "Terms of Service", external: true },
@@ -163,6 +164,17 @@ export function Navbar() {
               </a>
             </li>
             <li>
+              <Link
+                href="/blog"
+                className={cn(
+                  navLinkClass,
+                  pathname === "/blog" && navLinkActiveClass,
+                )}
+              >
+                Blog
+              </Link>
+            </li>
+            <li>
               <ResourcesDropdown />
             </li>
             <li>
@@ -231,6 +243,13 @@ export function Navbar() {
                 >
                   Ealho Notes AI
                 </a>
+                <Link
+                  href="/blog"
+                  onClick={() => setMobileOpen(false)}
+                  className="flex min-h-12 items-center rounded-lg px-3 py-3 text-base font-medium text-gray-600"
+                >
+                  Blog
+                </Link>
                 <div className="px-3 py-2">
                   <ResourcesDropdown mobile />
                 </div>
