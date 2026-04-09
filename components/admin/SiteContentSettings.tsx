@@ -25,9 +25,13 @@ export function SiteContentSettings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selectedFileName, setSelectedFileName] = useState<string>("");
+  const [lastUploadedFileName, setLastUploadedFileName] = useState<string>("");
+  const [selectedPreviewUrl, setSelectedPreviewUrl] = useState<string | null>(null);
+  const [uploadedPreviewVersion, setUploadedPreviewVersion] = useState<number>(Date.now());
 
   const [heroText, setHeroText] = useState("Get a free burnout guide");
   const [burnoutLandingText, setBurnoutLandingText] = useState("");
@@ -39,6 +43,7 @@ export function SiteContentSettings() {
   const [freebieStatus, setFreebieStatus] = useState<{
     configured: boolean;
     bucket: string;
+    storagePath: string | null;
   } | null>(null);
 
   const load = useCallback(async () => {
@@ -67,12 +72,18 @@ export function SiteContentSettings() {
 
       if (adminRes.ok) {
         const adminJson = (await adminRes.json()) as {
-          data?: { configured?: boolean; emailFilename?: string; bucket?: string };
+          data?: {
+            configured?: boolean;
+            emailFilename?: string;
+            bucket?: string;
+            storagePath?: string | null;
+          };
         };
         if (adminJson.data) {
           setFreebieStatus({
             configured: Boolean(adminJson.data.configured),
             bucket: adminJson.data.bucket ?? "freebies",
+            storagePath: adminJson.data.storagePath ?? null,
           });
           if (adminJson.data.emailFilename) setEmailFilename(adminJson.data.emailFilename);
         }
@@ -85,6 +96,12 @@ export function SiteContentSettings() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    return () => {
+      if (selectedPreviewUrl) URL.revokeObjectURL(selectedPreviewUrl);
+    };
+  }, [selectedPreviewUrl]);
 
   const saveCopy = async () => {
     setSaving(true);
@@ -131,16 +148,41 @@ export function SiteContentSettings() {
       return;
     }
     setUploading(true);
+    setUploadProgress(0);
     setError(null);
     setMessage(null);
     try {
       const fd = new FormData();
       fd.append("file", file);
-      fd.append("emailFilename", emailFilename.trim() || "Ealho-burnout-guide.pdf");
-      const res = await fetch("/api/admin/burnout-freebie", {
-        method: "POST",
-        credentials: "include",
-        body: fd,
+      const effectiveFilename = (emailFilename.trim() || file.name || "Ealho-burnout-guide.pdf")
+        .replace(/[^a-zA-Z0-9._-]+/g, "-")
+        .slice(0, 120);
+      fd.append("emailFilename", effectiveFilename);
+      const res = await new Promise<Response>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open("POST", "/api/admin/burnout-freebie");
+        xhr.withCredentials = true;
+
+        xhr.upload.onprogress = (event) => {
+          if (!event.lengthComputable) return;
+          const percent = Math.min(100, Math.round((event.loaded / event.total) * 100));
+          setUploadProgress(percent);
+        };
+
+        xhr.onerror = () => reject(new Error("Network error during upload"));
+        xhr.ontimeout = () => reject(new Error("Upload timed out"));
+        xhr.onload = () => {
+          const text = xhr.responseText ?? "";
+          resolve(
+            new Response(text, {
+              status: xhr.status,
+              statusText: xhr.statusText,
+              headers: { "Content-Type": xhr.getResponseHeader("content-type") ?? "text/plain" },
+            }),
+          );
+        };
+
+        xhr.send(fd);
       });
 
       let serverError: string | undefined;
@@ -157,9 +199,13 @@ export function SiteContentSettings() {
         setError(serverError ?? "Upload failed.");
         return;
       }
+      setUploadProgress(100);
       input.value = "";
       setSelectedFileName("");
-      setMessage("PDF uploaded successfully.");
+      setLastUploadedFileName(file.name);
+      setEmailFilename(effectiveFilename);
+      setMessage("PDF uploaded and saved successfully.");
+      setUploadedPreviewVersion(Date.now());
       void load();
     } catch (e) {
       console.error("Freebie upload failed:", e);
@@ -277,6 +323,12 @@ export function SiteContentSettings() {
               {freebieStatus?.configured ? "PDF configured" : "No PDF uploaded yet"}
             </span>
           </p>
+          {freebieStatus?.storagePath ? (
+            <p className="text-xs text-muted-foreground">
+              Current storage path:{" "}
+              <code className="rounded bg-muted px-1 text-xs">{freebieStatus.storagePath}</code>
+            </p>
+          ) : null}
           <div className="space-y-2">
             <Label>PDF attachment filename</Label>
             <Input
@@ -296,25 +348,84 @@ export function SiteContentSettings() {
                 const picked = e.currentTarget.files?.[0];
                 setSelectedFileName(picked?.name ?? "");
                 if (picked) {
+                  const nextPreviewUrl = URL.createObjectURL(picked);
+                  setSelectedPreviewUrl((prev) => {
+                    if (prev) URL.revokeObjectURL(prev);
+                    return nextPreviewUrl;
+                  });
+                  if (
+                    !emailFilename.trim() ||
+                    emailFilename.trim() === "Ealho-burnout-guide.pdf"
+                  ) {
+                    setEmailFilename(picked.name);
+                  }
                   setError(null);
                   setMessage(null);
+                } else {
+                  setSelectedPreviewUrl((prev) => {
+                    if (prev) URL.revokeObjectURL(prev);
+                    return null;
+                  });
                 }
               }}
             />
             <p className="text-xs text-muted-foreground">
-              {selectedFileName ? `Selected: ${selectedFileName}` : "No file selected."}
+              {selectedFileName
+                ? `Selected: ${selectedFileName}`
+                : lastUploadedFileName
+                  ? `No file selected. Last uploaded: ${lastUploadedFileName}`
+                  : "No file selected."}
             </p>
-            <Button type="button" disabled={uploading} onClick={() => void uploadPdf()}>
+            <Button
+              type="button"
+              disabled={uploading || !selectedFileName}
+              onClick={() => void uploadPdf()}
+            >
               {uploading ? (
                 <>
                   <Loader2 className="mr-2 size-4 animate-spin" />
-                  Uploading…
+                  Saving PDF changes… {uploadProgress}%
                 </>
               ) : (
-                "Upload PDF"
+                "Save PDF changes"
               )}
             </Button>
           </div>
+          {uploading ? (
+            <div className="space-y-2">
+              <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                <div
+                  className="h-full bg-primary transition-[width] duration-200"
+                  style={{ width: `${uploadProgress}%` }}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Uploading and saving in admin… {uploadProgress}%
+              </p>
+            </div>
+          ) : null}
+          {selectedPreviewUrl ? (
+            <div className="space-y-2">
+              <Label>Selected PDF preview (before save)</Label>
+              <iframe
+                key={selectedPreviewUrl}
+                src={selectedPreviewUrl}
+                className="h-96 w-full rounded-md border bg-white"
+                title="Selected PDF preview"
+              />
+            </div>
+          ) : null}
+          {freebieStatus?.configured ? (
+            <div className="space-y-2">
+              <Label>Current uploaded PDF preview</Label>
+              <iframe
+                key={uploadedPreviewVersion}
+                src={`/api/burnout-guide/download?inline=1&t=${uploadedPreviewVersion}`}
+                className="h-96 w-full rounded-md border bg-white"
+                title="Uploaded PDF preview"
+              />
+            </div>
+          ) : null}
         </CardContent>
       </Card>
     </div>

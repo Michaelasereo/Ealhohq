@@ -5,7 +5,7 @@ import { createServiceRoleClient } from "@/lib/supabase/service-role";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
     const { storagePath, emailFilename } = await getBurnoutFreebieConfig();
     if (!storagePath) {
@@ -28,11 +28,13 @@ export async function GET() {
     const filename = emailFilename.toLowerCase().endsWith(".pdf")
       ? emailFilename
       : `${emailFilename}.pdf`;
+    const { searchParams } = new URL(req.url);
+    const isInlinePreview = searchParams.get("inline") === "1";
 
     return new NextResponse(buf, {
       headers: {
-        "Content-Type": "application/octet-stream",
-        "Content-Disposition": `attachment; filename="${filename}"; filename*=UTF-8''${encodeURIComponent(filename)}`,
+        "Content-Type": "application/pdf",
+        "Content-Disposition": `${isInlinePreview ? "inline" : "attachment"}; filename="${filename}"; filename*=UTF-8''${encodeURIComponent(filename)}`,
         "X-Content-Type-Options": "nosniff",
         "Content-Length": String(buf.length),
         "Cache-Control": "no-store",
