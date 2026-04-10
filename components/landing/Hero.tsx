@@ -79,8 +79,8 @@ export function Hero() {
             className="mx-auto mt-6 max-w-[592px] text-[15px] leading-[22px] tracking-[-0.025em] text-[#5c574e] sm:text-[16px]"
           >
             Nigeria&apos;s first therapy platform built exclusively for doctors, nurses, and
-            healthcare professionals. Confidential, insurance-covered, and scheduled around your
-            clinical life.
+            healthcare professionals. Confidential, secure, and scheduled around your clinical
+            life.
           </motion.p>
 
           <motion.div
