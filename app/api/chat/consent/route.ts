@@ -7,6 +7,7 @@ import { ensureRegisteredPatientForUser } from "@/lib/queries/patient";
 import { prisma } from "@/lib/prisma/client";
 import { createClient } from "@/lib/supabase/server";
 
+import { captureApiError } from "@/lib/sentry/capture";
 export const runtime = "nodejs";
 
 const postSchema = z
@@ -34,6 +35,7 @@ export async function GET() {
     return NextResponse.json({ success: true, data: { hasConsent } });
   } catch (e) {
     console.error("chat/consent GET:", e);
+    captureApiError(e, { route: "/chat/consent" });
     return NextResponse.json({ error: "Failed" }, { status: 500 });
   }
 }
@@ -107,6 +109,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: true });
   } catch (e) {
     console.error("chat/consent POST:", e);
+    captureApiError(e, { route: "/chat/consent" });
     return NextResponse.json({ error: "Failed to save consent" }, { status: 500 });
   }
 }

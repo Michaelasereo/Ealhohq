@@ -1,6 +1,7 @@
 import { formatAmountToKobo } from "@/lib/paystack/client";
 import { getPaystackSecretKey } from "@/lib/paystack/server-keys";
 import { prisma } from "@/lib/prisma/client";
+import { withRetry } from "@/lib/retry";
 
 function parseMetadata(raw: unknown): Record<string, string> {
   if (!raw) return {};
@@ -47,11 +48,15 @@ export async function verifyPaystackForBooking(
     return { ok: false, error: "Paystack is not configured", status: 500 };
   }
 
-  const response = await fetch(
-    `https://api.paystack.co/transaction/verify/${encodeURIComponent(reference.trim())}`,
-    {
-      headers: { Authorization: `Bearer ${secret}` },
-    },
+  const response = await withRetry(
+    () =>
+      fetch(
+        `https://api.paystack.co/transaction/verify/${encodeURIComponent(reference.trim())}`,
+        {
+          headers: { Authorization: `Bearer ${secret}` },
+        },
+      ),
+    { attempts: 2, delayMs: 1000 },
   );
 
   const payload = (await response.json()) as {

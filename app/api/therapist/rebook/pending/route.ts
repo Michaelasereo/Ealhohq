@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma/client";
 import { createClient } from "@/lib/supabase/server";
 import { bookingDateStartToIso } from "@/lib/wat-datetime";
 
+import { captureApiError } from "@/lib/sentry/capture";
 export async function GET() {
   try {
     const supabase = await createClient();
@@ -53,6 +54,7 @@ export async function GET() {
     return NextResponse.json({ success: true, data });
   } catch (e) {
     console.error("rebook pending GET:", e);
+    captureApiError(e, { route: "/therapist/rebook/pending" });
     return NextResponse.json(
       { error: "Failed to load" },
       { status: 500 },

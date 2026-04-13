@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma/client";
 import { createClient } from "@/lib/supabase/server";
 import { watCurrentMonthStart } from "@/lib/wat-month";
 
+import { captureApiError } from "@/lib/sentry/capture";
 export async function GET() {
   try {
     const supabase = await createClient();
@@ -92,6 +93,7 @@ export async function GET() {
     });
   } catch (e) {
     console.error("admin/packages GET:", e);
+    captureApiError(e, { route: "/admin/packages" });
     return NextResponse.json(
       { success: false, error: "Failed to fetch package analytics" },
       { status: 500 },

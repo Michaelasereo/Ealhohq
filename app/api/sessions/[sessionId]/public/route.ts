@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma/client";
 import { therapistPublicLabel } from "@/lib/therapist-display-name";
 
+import { captureApiError } from "@/lib/sentry/capture";
 type Ctx = { params: Promise<{ sessionId: string }> };
 
 export async function GET(_req: Request, ctx: Ctx) {
@@ -30,6 +31,7 @@ export async function GET(_req: Request, ctx: Ctx) {
     });
   } catch (e) {
     console.error("session public:", e);
+    captureApiError(e, { route: "/sessions/[sessionId]/public" });
     return NextResponse.json(
       { error: "Failed to load session" },
       { status: 500 },

@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { ensurePendingBookingForRebookRequest } from "@/lib/rebooking/ensure-pending-booking";
 
+import { captureApiError } from "@/lib/sentry/capture";
 const schema = z
   .object({
     requestId: z.string().uuid(),
@@ -51,6 +52,7 @@ export async function POST(req: Request) {
     }
   } catch (e) {
     console.error("rebook prepare-payment:", e);
+    captureApiError(e, { route: "/rebook/prepare-payment" });
     return NextResponse.json(
       { error: "Failed to prepare payment" },
       { status: 500 },

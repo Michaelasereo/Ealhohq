@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { getTherapistByProfileId } from "@/lib/queries/patient";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma/client";
+import { captureApiError } from "@/lib/sentry/capture";
 import {
   bookingDateStartToIso,
   watDayStart,
@@ -104,6 +105,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ success: true, data: rows });
   } catch (e) {
     console.error("therapist/sessions GET:", e);
+    captureApiError(e, { route: "/therapist/sessions" });
     return NextResponse.json(
       { error: "Failed to fetch sessions" },
       { status: 500 },

@@ -5,6 +5,7 @@ import { getPatientByProfileId } from "@/lib/queries/patient";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma/client";
 
+import { captureApiError } from "@/lib/sentry/capture";
 export const runtime = "nodejs";
 
 export async function POST(req: Request) {
@@ -74,6 +75,7 @@ export async function POST(req: Request) {
       });
     } catch (e) {
       console.error("delete-account auth update:", e);
+    captureApiError(e, { route: "/patient/delete-account" });
     }
 
     await supabase.auth.signOut();
@@ -81,6 +83,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: true });
   } catch (e) {
     console.error("client delete-account:", e);
+    captureApiError(e, { route: "/patient/delete-account" });
     return NextResponse.json(
       { error: "Failed to delete account" },
       { status: 500 },

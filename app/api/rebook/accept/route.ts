@@ -15,6 +15,7 @@ import { verifyPaystackForBooking } from "@/lib/payment/verify-paystack-referenc
 import { prisma } from "@/lib/prisma/client";
 import { createClient } from "@/lib/supabase/server";
 
+import { captureApiError } from "@/lib/sentry/capture";
 const bodySchema = z
   .object({
     requestId: z.string().uuid(),
@@ -120,6 +121,7 @@ export async function POST(req: Request) {
     });
   } catch (e) {
     console.error("rebook accept:", e);
+    captureApiError(e, { route: "/rebook/accept" });
     const msg = e instanceof Error ? e.message : "";
     if (msg === "INVALID_REQUEST") {
       return NextResponse.json(

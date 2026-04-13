@@ -1,12 +1,15 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 
 import {
   TherapistCard,
   TherapistCardSkeleton,
 } from "@/components/booking/TherapistCard";
 import { CaptureReferralFromUrl } from "@/components/referral/CaptureReferralFromUrl";
+import { CapturePartnerBookParams } from "@/components/referral/CapturePartnerBookParams";
 
 type TherapistRow = {
   id: string;
@@ -17,7 +20,20 @@ type TherapistRow = {
   sessionDuration: number;
 };
 
-export default function GuestBookPage() {
+function BookPageInner() {
+  const searchParams = useSearchParams();
+  const t = searchParams.get("type")?.toLowerCase() ?? "";
+  const title =
+    t === "clinician"
+      ? "Therapy built for clinicians"
+      : t === "general" || t === "non_clinician" || t === "non-clinician"
+        ? "Therapy built just for you"
+        : "Book a Therapy Session";
+  const subtitle =
+    t === "clinician" || t === "general" || t === "non_clinician" || t === "non-clinician"
+      ? "All times in West Africa Time (WAT)."
+      : "All times shown in West Africa Time (WAT).";
+
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["booking-therapists"],
     queryFn: async () => {
@@ -37,10 +53,11 @@ export default function GuestBookPage() {
   return (
     <main className="mx-auto min-h-screen w-full max-w-md p-4">
       <CaptureReferralFromUrl />
-      <h1 className="text-xl font-semibold">Book a Therapy Session</h1>
-      <p className="mt-1 text-sm text-muted-foreground">
-        All times shown in West Africa Time (WAT).
-      </p>
+      <Suspense fallback={null}>
+        <CapturePartnerBookParams />
+      </Suspense>
+      <h1 className="text-xl font-semibold">{title}</h1>
+      <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>
 
       {isLoading ? (
         <div className="mt-4 space-y-3">
@@ -64,5 +81,19 @@ export default function GuestBookPage() {
         </div>
       )}
     </main>
+  );
+}
+
+export default function GuestBookPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="mx-auto min-h-screen w-full max-w-md p-4">
+          <p className="text-sm text-muted-foreground">Loading…</p>
+        </main>
+      }
+    >
+      <BookPageInner />
+    </Suspense>
   );
 }

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma/client";
 
+import { captureApiError } from "@/lib/sentry/capture";
 export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
@@ -40,6 +41,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "key required" }, { status: 400 });
   } catch (e) {
     console.error("site-config GET:", e);
+    captureApiError(e, { route: "/site-config" });
     return NextResponse.json({ error: "Failed to load config" }, { status: 500 });
   }
 }

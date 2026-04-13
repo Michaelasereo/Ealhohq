@@ -6,6 +6,7 @@ import { sendSessionCancelledWhatsApp } from "@/lib/cancellation/send-cancelled-
 import { isAdminUser } from "@/lib/auth/is-admin";
 import { createClient } from "@/lib/supabase/server";
 
+import { captureApiError } from "@/lib/sentry/capture";
 const bodySchema = z
   .object({
     bookingId: z.string().uuid(),
@@ -83,6 +84,7 @@ export async function POST(req: Request) {
     });
   } catch (e) {
     console.error("sessions/cancel POST:", e);
+    captureApiError(e, { route: "/sessions/cancel" });
     return NextResponse.json(
       { success: false, error: "Failed to cancel session" },
       { status: 500 },

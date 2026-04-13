@@ -4,6 +4,7 @@ import { z } from "zod";
 import { requireAdminUser } from "@/lib/auth/require-admin-api";
 import { prisma } from "@/lib/prisma/client";
 
+import { captureApiError } from "@/lib/sentry/capture";
 const manualSchema = z.object({
   authorName: z.string().min(1).max(200),
   authorRole: z.string().min(1).max(200),
@@ -33,6 +34,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ success: true, data: reviews });
   } catch (e) {
     console.error("admin reviews GET:", e);
+    captureApiError(e, { route: "/admin/reviews" });
     return NextResponse.json({ error: "Failed to list reviews" }, { status: 500 });
   }
 }
@@ -66,6 +68,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: true, data: review });
   } catch (e) {
     console.error("admin reviews POST:", e);
+    captureApiError(e, { route: "/admin/reviews" });
     return NextResponse.json({ error: "Failed to create review" }, { status: 500 });
   }
 }

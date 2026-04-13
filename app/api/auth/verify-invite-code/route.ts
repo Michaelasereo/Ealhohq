@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { findAuthUserByEmail } from "@/lib/auth/find-auth-user-by-email";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 
+import { captureApiError } from "@/lib/sentry/capture";
 export async function POST(req: Request) {
   try {
     const body = (await req.json()) as { email?: string; code?: string };
@@ -42,6 +43,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: true, data: { valid: true } });
   } catch (error) {
     console.error("verify-invite-code:", error);
+    captureApiError(error, { route: "/auth/verify-invite-code" });
     return NextResponse.json(
       { error: "Verification failed" },
       { status: 500 },

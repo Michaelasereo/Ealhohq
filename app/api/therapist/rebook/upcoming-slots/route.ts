@@ -5,6 +5,7 @@ import { getTherapistByProfileId } from "@/lib/queries/patient";
 import { createClient } from "@/lib/supabase/server";
 import { addWatDays, watTodayDateString } from "@/lib/wat-datetime";
 
+import { captureApiError } from "@/lib/sentry/capture";
 export async function GET() {
   try {
     const supabase = await createClient();
@@ -33,6 +34,7 @@ export async function GET() {
     return NextResponse.json({ success: true, data: { days } });
   } catch (e) {
     console.error("rebook upcoming-slots:", e);
+    captureApiError(e, { route: "/therapist/rebook/upcoming-slots" });
     return NextResponse.json(
       { error: "Failed to load slots" },
       { status: 500 },

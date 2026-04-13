@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma/client";
 import { bookingDateStartToIso } from "@/lib/wat-datetime";
 import { getDisplayName } from "@/lib/utils/patient-display";
 
+import { captureApiError } from "@/lib/sentry/capture";
 type Ctx = { params: Promise<{ clientId: string }> };
 
 const therapistClientBookingSelect = {
@@ -198,6 +199,7 @@ export async function GET(_req: Request, ctx: Ctx) {
     });
   } catch (e) {
     console.error("therapist client GET:", e);
+    captureApiError(e, { route: "/therapist/clients/[clientId]" });
     return NextResponse.json(
       {
         success: false,

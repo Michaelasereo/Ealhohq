@@ -6,6 +6,7 @@ import { isTherapistSignupAllowed } from "@/lib/auth/therapist-signup-allowlist"
 import { recordConsentRecords } from "@/lib/consents/record-consent-server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 
+import { captureApiError } from "@/lib/sentry/capture";
 export const runtime = "nodejs";
 
 const bodySchema = z.object({
@@ -234,6 +235,7 @@ export async function POST(req: Request) {
       }
     } catch (e) {
       console.error("complete-otp auth:", e);
+    captureApiError(e, { route: "/auth/complete-otp" });
       return NextResponse.json(
         { success: false, error: "Could not complete registration" },
         { status: 500 },
@@ -267,6 +269,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: true });
   } catch (e) {
     console.error("complete-otp:", e);
+    captureApiError(e, { route: "/auth/complete-otp" });
     return NextResponse.json(
       { success: false, error: "Could not complete verification" },
       { status: 500 },

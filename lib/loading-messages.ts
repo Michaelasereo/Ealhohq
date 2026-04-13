@@ -41,6 +41,13 @@ export const ADMIN_MESSAGES = [
   "Almost there...",
 ];
 
+/** Corporate wellness / super-referral partner workspace (`/admin/partners/*`). */
+export const PARTNER_ADMIN_MESSAGES = [
+  "Loading partner workspace...",
+  "Fetching organisation and pool data...",
+  "Almost there...",
+];
+
 export const REBOOK_MESSAGES = [
   "Checking availability...",
   "Finding the next open slot...",

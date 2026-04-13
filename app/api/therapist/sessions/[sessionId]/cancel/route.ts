@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma/client";
 import { minutesUntilSessionStart } from "@/lib/session/join-access";
 
+import { captureApiError } from "@/lib/sentry/capture";
 type Ctx = { params: Promise<{ sessionId: string }> };
 
 export async function PATCH(req: Request, ctx: Ctx) {
@@ -66,6 +67,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
     });
   } catch (e) {
     console.error("session cancel PATCH:", e);
+    captureApiError(e, { route: "/therapist/sessions/[sessionId]/cancel" });
     return NextResponse.json(
       { error: "Failed to cancel" },
       { status: 500 },

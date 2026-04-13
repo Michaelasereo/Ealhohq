@@ -4,6 +4,7 @@ import { getTherapistByProfileId } from "@/lib/queries/patient";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma/client";
 
+import { captureApiError } from "@/lib/sentry/capture";
 export async function POST(req: Request) {
   try {
     const supabase = await createClient();
@@ -53,6 +54,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: true, data: override });
   } catch (e) {
     console.error("therapist/availability/overrides POST:", e);
+    captureApiError(e, { route: "/therapist/availability/overrides" });
     return NextResponse.json(
       { error: "Failed to save override" },
       { status: 500 },
@@ -96,6 +98,7 @@ export async function DELETE(req: Request) {
     return NextResponse.json({ success: true });
   } catch (e) {
     console.error("therapist/availability/overrides DELETE:", e);
+    captureApiError(e, { route: "/therapist/availability/overrides" });
     return NextResponse.json(
       { error: "Failed to delete override" },
       { status: 500 },

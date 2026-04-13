@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { sendSessionReminders } from "@/lib/email/send-session-reminders";
 
+import { captureApiError } from "@/lib/sentry/capture";
 // Called by cron-job.org every 30 minutes (or Netlify scheduled function).
 // Safe to run frequently — only sends when sessions are in 24h or 6h window.
 
@@ -24,6 +25,7 @@ export async function GET(req: Request) {
     });
   } catch (error) {
     console.error("Reminder cron error:", error);
+    captureApiError(error, { route: "/cron/session-reminders" });
     return NextResponse.json(
       { error: "Reminder job failed" },
       { status: 500 },

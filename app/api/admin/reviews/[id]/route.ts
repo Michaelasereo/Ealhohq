@@ -4,6 +4,7 @@ import { z } from "zod";
 import { requireAdminUser } from "@/lib/auth/require-admin-api";
 import { prisma } from "@/lib/prisma/client";
 
+import { captureApiError } from "@/lib/sentry/capture";
 const patchSchema = z.object({
   action: z.enum(["approve", "republish", "feature", "unfeature", "unpublish"]),
 });
@@ -73,6 +74,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
     return NextResponse.json({ error: "Unknown action" }, { status: 400 });
   } catch (e) {
     console.error("admin reviews PATCH:", e);
+    captureApiError(e, { route: "/admin/reviews/[id]" });
     return NextResponse.json({ error: "Failed to update review" }, { status: 500 });
   }
 }
@@ -87,6 +89,7 @@ export async function DELETE(_req: Request, ctx: Ctx) {
     return NextResponse.json({ success: true });
   } catch (e) {
     console.error("admin reviews DELETE:", e);
+    captureApiError(e, { route: "/admin/reviews/[id]" });
     return NextResponse.json({ error: "Failed to delete review" }, { status: 500 });
   }
 }

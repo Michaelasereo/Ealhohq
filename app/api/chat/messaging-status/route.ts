@@ -6,6 +6,7 @@ import { ensureRegisteredPatientForUser } from "@/lib/queries/patient";
 import { prisma } from "@/lib/prisma/client";
 import { createClient } from "@/lib/supabase/server";
 
+import { captureApiError } from "@/lib/sentry/capture";
 export const runtime = "nodejs";
 
 export async function GET() {
@@ -63,6 +64,7 @@ export async function GET() {
     });
   } catch (e) {
     console.error("chat/messaging-status:", e);
+    captureApiError(e, { route: "/chat/messaging-status" });
     return NextResponse.json({ error: "Failed" }, { status: 500 });
   }
 }

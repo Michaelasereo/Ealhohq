@@ -5,6 +5,7 @@ import { sendSessionCancelledWhatsApp } from "@/lib/cancellation/send-cancelled-
 import { getTherapistByProfileId } from "@/lib/queries/patient";
 import { createClient } from "@/lib/supabase/server";
 
+import { captureApiError } from "@/lib/sentry/capture";
 type Ctx = { params: Promise<{ bookingId: string }> };
 
 /**
@@ -58,6 +59,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
     });
   } catch (e) {
     console.error("therapist booking cancel PATCH:", e);
+    captureApiError(e, { route: "/therapist/bookings/[bookingId]/cancel" });
     return NextResponse.json({ error: "Failed to cancel" }, { status: 500 });
   }
 }

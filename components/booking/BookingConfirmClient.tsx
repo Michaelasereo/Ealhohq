@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { Button, buttonVariants } from "@/components/ui/button";
 import { PackageSelector } from "@/components/booking/PackageSelector";
@@ -20,6 +20,7 @@ type Props = {
 
 export function BookingConfirmClient({ listHref }: Props) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const draft = useBookingStore((s) => s.draft);
   const setDraft = useBookingStore((s) => s.setDraft);
   const selectedPackage = useBookingStore((s) => s.selectedPackage);
@@ -37,13 +38,13 @@ export function BookingConfirmClient({ listHref }: Props) {
   const [payPhase, setPayPhase] = useState<
     "idle" | "creating" | "initializing"
   >("idle");
-  const [paymentMode, setPaymentMode] = useState<"paystack" | "package">(
-    "paystack",
-  );
+  const [paymentMode, setPaymentMode] = useState<
+    "paystack" | "package" | "partner"
+  >("paystack");
 
   const needsGuest = Boolean(draft?.isGuest || !draft?.patientId);
 
-  const { data: me } = useQuery({
+  const { data: me, isError: meError } = useQuery({
     queryKey: ["patient-me"],
     queryFn: async () => {
       const r = await fetch("/api/patient/me");
@@ -55,12 +56,18 @@ export function BookingConfirmClient({ listHref }: Props) {
             email: string;
             phone: string;
           } | null;
+          partnerProgram: {
+            partnerName: string;
+            monthlyCreditsRemaining: number;
+            onboardingStatus: string;
+          } | null;
         };
       };
-      if (!r.ok || !j.success) return null;
+      if (!r.ok || !j.success) throw new Error("Failed to load account");
       return j.data ?? null;
     },
     enabled: Boolean(draft?.patientId),
+    retry: 1,
   });
 
   const packageQ = useQuery({
@@ -77,12 +84,13 @@ export function BookingConfirmClient({ listHref }: Props) {
           }[];
         };
       };
-      if (!r.ok || !j.success) return null;
+      if (!r.ok || !j.success) throw new Error("Failed to load packages");
       return (
         j.data?.packages.find((p) => p.therapist.id === draft?.therapistId) ?? null
       );
     },
     enabled: Boolean(draft?.therapistId && draft?.patientId),
+    retry: 1,
   });
 
   useEffect(() => {
@@ -181,6 +189,44 @@ export function BookingConfirmClient({ listHref }: Props) {
     },
   });
 
+  const partnerEligible =
+    Boolean(draft?.patientId) &&
+    selectedPackage === "single" &&
+    me?.partnerProgram?.onboardingStatus === "active" &&
+    (me.partnerProgram.monthlyCreditsRemaining ?? 0) > 0;
+
+  const hasPackageCredit = Boolean(
+    packageQ.data && packageQ.data.remainingSessions > 0,
+  );
+  const showAlternatePayment = partnerEligible || hasPackageCredit;
+
+  const userExplicitChoice = useRef(false);
+
+  const choosePaymentMode = useCallback(
+    (mode: "paystack" | "package" | "partner") => {
+      userExplicitChoice.current = true;
+      setPaymentMode(mode);
+    },
+    [],
+  );
+
+  useEffect(() => {
+    setPaymentMode((prev) => {
+      if (prev === "partner" && !partnerEligible) {
+        userExplicitChoice.current = false;
+        return hasPackageCredit ? "package" : "paystack";
+      }
+      if (prev === "package" && !hasPackageCredit) {
+        userExplicitChoice.current = false;
+        return partnerEligible ? "partner" : "paystack";
+      }
+      if (userExplicitChoice.current) return prev;
+      if (partnerEligible) return "partner";
+      if (hasPackageCredit) return "package";
+      return prev;
+    });
+  }, [partnerEligible, hasPackageCredit]);
+
   const busy = payPhase !== "idle" || createBooking.isPending || usePackageMut.isPending;
 
   if (!draft?.therapistId) {
@@ -228,6 +274,29 @@ export function BookingConfirmClient({ listHref }: Props) {
         setPayPhase("creating");
         const bookingId = await usePackageMut.mutateAsync();
         router.push(`/dashboard/book/success?bookingId=${encodeURIComponent(bookingId)}`);
+        return;
+      }
+      if (paymentMode === "partner") {
+        if (!partnerEligible) {
+          setPayError("Employer coverage is not available for this booking.");
+          return;
+        }
+        setPayPhase("creating");
+        const bookingId = await createBooking.mutateAsync();
+        const pc = await fetch("/api/payment/partner-coverage", {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ bookingId }),
+        });
+        const pcJson = (await pc.json()) as { success?: boolean; error?: string };
+        if (!pc.ok || !pcJson.success) {
+          throw new Error(pcJson.error ?? "Could not apply employer coverage");
+        }
+        void queryClient.invalidateQueries({ queryKey: ["patient-me"] });
+        router.push(
+          `/dashboard/book/success?bookingId=${encodeURIComponent(bookingId)}`,
+        );
         return;
       }
       setPayPhase("creating");
@@ -307,36 +376,68 @@ export function BookingConfirmClient({ listHref }: Props) {
         </span>
       </label>
 
-      {packageQ.data ? (
-        <div className="rounded-xl border border-primary/30 bg-primary/5 p-3 text-sm">
-          <p className="font-medium">🎟 Use Package Credit</p>
-          <p className="mt-1 text-muted-foreground">
-            You have {packageQ.data.remainingSessions} session
-            {packageQ.data.remainingSessions === 1 ? "" : "s"} remaining with{" "}
-            {packageQ.data.therapist.name}
-          </p>
-          <div className="mt-2 flex gap-2">
-            <Button
-              type="button"
-              variant={paymentMode === "package" ? "default" : "outline"}
-              className={cn(
-                "min-h-11 flex-1",
-                paymentMode === "package" &&
-                  "bg-primary text-primary-foreground hover:bg-primary/90",
-              )}
-              disabled={busy}
-              onClick={() => setPaymentMode("package")}
-            >
-              Use Credit — Book Free
-            </Button>
+      {meError ? (
+        <p className="text-sm text-amber-700">
+          Could not check employer coverage. You can still pay below.
+        </p>
+      ) : null}
+      {packageQ.isError ? (
+        <p className="text-sm text-amber-700">
+          Could not check package credits. You can still pay below.
+        </p>
+      ) : null}
+
+      {showAlternatePayment ? (
+        <div className="rounded-xl border border-border/80 bg-muted/20 p-4 text-sm">
+          <div className="space-y-1">
+            <p className="font-medium">How would you like to pay?</p>
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              Pick one option. Employer coverage and package credit cannot be
+              combined on the same booking.
+            </p>
+          </div>
+          <div className="mt-4 flex flex-col gap-3">
+            {partnerEligible ? (
+              <Button
+                type="button"
+                variant={paymentMode === "partner" ? "default" : "outline"}
+                className={cn(
+                  "min-h-12 w-full justify-center",
+                  paymentMode === "partner" &&
+                    "bg-emerald-800 text-white hover:bg-emerald-800/90",
+                )}
+                disabled={busy}
+                onClick={() => choosePaymentMode("partner")}
+              >
+                Employer coverage — {me?.partnerProgram?.partnerName} (
+                {me?.partnerProgram?.monthlyCreditsRemaining} left this month)
+              </Button>
+            ) : null}
+            {hasPackageCredit && packageQ.data ? (
+              <Button
+                type="button"
+                variant={paymentMode === "package" ? "default" : "outline"}
+                className={cn(
+                  "min-h-12 w-full justify-center",
+                  paymentMode === "package" &&
+                    "bg-primary text-primary-foreground hover:bg-primary/90",
+                )}
+                disabled={busy}
+                onClick={() => choosePaymentMode("package")}
+              >
+                Package credit — {packageQ.data.remainingSessions} session
+                {packageQ.data.remainingSessions === 1 ? "" : "s"} with{" "}
+                {packageQ.data.therapist.name}
+              </Button>
+            ) : null}
             <Button
               type="button"
               variant={paymentMode === "paystack" ? "default" : "outline"}
-              className="min-h-11 flex-1"
+              className="min-h-12 w-full justify-center"
               disabled={busy}
-              onClick={() => setPaymentMode("paystack")}
+              onClick={() => choosePaymentMode("paystack")}
             >
-              Pay for new session
+              Pay now · ₦{naira.toLocaleString("en-NG")}
             </Button>
           </div>
         </div>
@@ -369,12 +470,16 @@ export function BookingConfirmClient({ listHref }: Props) {
         {payPhase === "creating"
           ? paymentMode === "package"
             ? "Booking with package credit…"
-            : "Saving booking…"
+            : paymentMode === "partner"
+              ? "Confirming with employer coverage…"
+              : "Saving booking…"
           : payPhase === "initializing"
             ? "Opening Paystack…"
             : paymentMode === "package"
               ? "Use Credit — Book Free"
-              : `Pay ₦${naira.toLocaleString("en-NG")}`}
+              : paymentMode === "partner"
+                ? "Confirm with employer coverage"
+                : `Pay ₦${naira.toLocaleString("en-NG")}`}
       </Button>
 
       <Link

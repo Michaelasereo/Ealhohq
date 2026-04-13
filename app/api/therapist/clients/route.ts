@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma/client";
 import { getDisplayName } from "@/lib/utils/patient-display";
 
+import { captureApiError } from "@/lib/sentry/capture";
 export async function GET(req: Request) {
   try {
     const supabase = await createClient();
@@ -81,6 +82,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ success: true, data: mapped });
   } catch (e) {
     console.error("Therapist clients list:", e);
+    captureApiError(e, { route: "/therapist/clients" });
     return NextResponse.json(
       { error: "Failed to fetch clients" },
       { status: 500 },

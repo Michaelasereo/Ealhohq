@@ -5,6 +5,7 @@ import { isAdminUser } from "@/lib/auth/is-admin";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma/client";
 
+import { captureApiError } from "@/lib/sentry/capture";
 type Ctx = { params: Promise<{ therapistId: string }> };
 
 export async function PUT(_req: Request, ctx: Ctx) {
@@ -77,6 +78,7 @@ export async function PUT(_req: Request, ctx: Ctx) {
     return NextResponse.json({ success: true });
   } catch (e) {
     console.error("Suspend therapist:", e);
+    captureApiError(e, { route: "/admin/therapists/[therapistId]/suspend" });
     return NextResponse.json(
       { error: "Failed to suspend therapist" },
       { status: 500 },

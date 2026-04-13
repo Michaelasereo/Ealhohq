@@ -15,6 +15,7 @@ import { sendWhatsAppText } from "@/lib/reminders/send-whatsapp";
 import { prisma } from "@/lib/prisma/client";
 import { createClient } from "@/lib/supabase/server";
 
+import { captureApiError } from "@/lib/sentry/capture";
 export const runtime = "nodejs";
 
 function appBase(): string {
@@ -183,6 +184,7 @@ export async function POST(req: Request) {
     });
   } catch (e) {
     console.error("chat/delete-all-messages:", e);
+    captureApiError(e, { route: "/chat/delete-all-messages" });
     return NextResponse.json({ error: "Failed" }, { status: 500 });
   }
 }

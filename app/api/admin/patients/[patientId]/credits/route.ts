@@ -4,6 +4,7 @@ import { isAdminUser } from "@/lib/auth/is-admin";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma/client";
 
+import { captureApiError } from "@/lib/sentry/capture";
 type Ctx = { params: Promise<{ patientId: string }> };
 
 export async function POST(req: Request, ctx: Ctx) {
@@ -58,6 +59,7 @@ export async function POST(req: Request, ctx: Ctx) {
     });
   } catch (e) {
     console.error("admin client credits:", e);
+    captureApiError(e, { route: "/admin/patients/[patientId]/credits" });
     return NextResponse.json(
       { error: "Failed to add credits" },
       { status: 500 },

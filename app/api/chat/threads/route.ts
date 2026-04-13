@@ -13,6 +13,7 @@ import { prisma } from "@/lib/prisma/client";
 import { createClient } from "@/lib/supabase/server";
 import { therapistPublicLabel } from "@/lib/therapist-display-name";
 
+import { captureApiError } from "@/lib/sentry/capture";
 export const runtime = "nodejs";
 
 async function logAudit(input: {
@@ -166,6 +167,7 @@ export async function GET() {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   } catch (e) {
     console.error("chat/threads GET:", e);
+    captureApiError(e, { route: "/chat/threads" });
     return NextResponse.json({ error: "Failed" }, { status: 500 });
   }
 }
@@ -350,6 +352,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   } catch (e) {
     console.error("chat/threads POST:", e);
+    captureApiError(e, { route: "/chat/threads" });
     return NextResponse.json({ error: "Failed" }, { status: 500 });
   }
 }

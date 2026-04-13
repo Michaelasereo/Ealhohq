@@ -5,6 +5,7 @@ import { ensureRegisteredPatientForUser } from "@/lib/queries/patient";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma/client";
 
+import { captureApiError } from "@/lib/sentry/capture";
 const patchSchema = z
   .object({
     fullName: z.string().min(1).optional(),
@@ -59,6 +60,7 @@ export async function GET() {
     });
   } catch (e) {
     console.error("client profile/me GET:", e);
+    captureApiError(e, { route: "/patient/profile/me" });
     return NextResponse.json(
       { error: "Failed to fetch profile" },
       { status: 500 },
@@ -154,6 +156,7 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ success: true });
   } catch (e) {
     console.error("client profile/me PATCH:", e);
+    captureApiError(e, { route: "/patient/profile/me" });
     return NextResponse.json(
       { error: "Failed to update profile" },
       { status: 500 },

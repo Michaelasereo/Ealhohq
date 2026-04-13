@@ -9,6 +9,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { prisma } from "@/lib/prisma/client";
 
+import { captureApiError } from "@/lib/sentry/capture";
 export async function GET(req: Request) {
   try {
     const supabase = await createClient();
@@ -87,6 +88,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ success: true, data });
   } catch (e) {
     console.error("admin therapists GET:", e);
+    captureApiError(e, { route: "/admin/therapists" });
     return NextResponse.json(
       { error: "Failed to load therapists" },
       { status: 500 },

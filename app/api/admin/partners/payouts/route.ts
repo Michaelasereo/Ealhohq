@@ -5,6 +5,7 @@ import { isAdminUser } from "@/lib/auth/is-admin";
 import { prisma } from "@/lib/prisma/client";
 import { createClient } from "@/lib/supabase/server";
 
+import { captureApiError } from "@/lib/sentry/capture";
 export async function GET() {
   try {
     const supabase = await createClient();
@@ -37,6 +38,7 @@ export async function GET() {
     });
   } catch (e) {
     console.error("admin/partners/payouts GET:", e);
+    captureApiError(e, { route: "/admin/partners/payouts" });
     return NextResponse.json({ error: "Failed to load payouts" }, { status: 500 });
   }
 }
@@ -88,6 +90,7 @@ export async function POST() {
     return NextResponse.json({ success: true, data: { createdCount: created.length, ids: created } });
   } catch (e) {
     console.error("admin/partners/payouts POST:", e);
+    captureApiError(e, { route: "/admin/partners/payouts" });
     return NextResponse.json({ error: "Failed to generate payouts" }, { status: 500 });
   }
 }

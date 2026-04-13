@@ -1,6 +1,7 @@
 import type { Prisma } from "@prisma/client";
 
 import { getAuthUserEmailById } from "@/lib/auth/auth-user-email";
+import { prisma } from "@/lib/prisma/client";
 import {
   formatBookingDateLong,
   formatSlotTo12h,
@@ -32,6 +33,26 @@ export type TherapyBookingWithNotifyInclude = Prisma.TherapyBookingGetPayload<{
 export async function sendTherapyBookingPaidNotifications(
   booking: TherapyBookingWithNotifyInclude,
 ): Promise<void> {
+  if (booking.sessionType === "psychiatric_assessment") {
+    const to = getBookingRecipientEmail(booking);
+    if (to) {
+      const psych = await prisma.psychiatricSession.findUnique({
+        where: { bookingId: booking.id },
+        include: { psychiatrist: true },
+      });
+      const startIso = bookingDateStartToIso(booking.date, booking.startTime);
+      const join = sessionJoinUrl(booking.id);
+      const psychName = psych?.psychiatrist.name ?? "your psychiatrist";
+      void sendTransactionalEmail({
+        to,
+        subject: "Psychiatric assessment confirmed",
+        html: `<p>Your psychiatric assessment with <strong>${psychName}</strong> is confirmed.</p>
+        <p><a href="${join}">Join link</a></p>`,
+      }).catch(() => {});
+    }
+    return;
+  }
+
   const to = getBookingRecipientEmail(booking);
   if (to) {
     const layout = buildBookingEmailLayoutParams(booking);

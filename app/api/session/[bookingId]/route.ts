@@ -15,6 +15,7 @@ export async function GET(_req: Request, ctx: Ctx) {
         therapist: { include: { profile: true } },
         patient: { select: { profileId: true } },
         session: true,
+        psychiatricSession: { include: { psychiatrist: true } },
       },
     });
 

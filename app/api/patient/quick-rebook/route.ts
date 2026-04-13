@@ -8,6 +8,7 @@ import { prisma } from "@/lib/prisma/client";
 import { therapistPublicLabel } from "@/lib/therapist-display-name";
 import { addWatDays, watTodayDateString } from "@/lib/wat-datetime";
 
+import { captureApiError } from "@/lib/sentry/capture";
 export async function POST(req: Request) {
   try {
     const supabase = await createClient();
@@ -109,6 +110,7 @@ export async function POST(req: Request) {
     });
   } catch (e) {
     console.error("client quick-rebook POST:", e);
+    captureApiError(e, { route: "/patient/quick-rebook" });
     return NextResponse.json(
       { success: false, error: "Failed to load quick rebook" },
       { status: 500 },

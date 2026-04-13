@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma/client";
 import { therapistPublicLabel } from "@/lib/therapist-display-name";
 
+import { captureApiError } from "@/lib/sentry/capture";
 export const runtime = "nodejs";
 
 export type MessagingTherapistRow = {
@@ -78,6 +79,7 @@ export async function GET() {
     });
   } catch (e) {
     console.error("patient/messaging/therapists GET:", e);
+    captureApiError(e, { route: "/patient/messaging/therapists" });
     return NextResponse.json({ error: "Failed" }, { status: 500 });
   }
 }

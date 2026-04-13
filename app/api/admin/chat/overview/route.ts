@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma/client";
 import { therapistPublicLabel } from "@/lib/therapist-display-name";
 import { watDayStart, watTodayDateString } from "@/lib/wat-datetime";
 
+import { captureApiError } from "@/lib/sentry/capture";
 export const runtime = "nodejs";
 
 export async function GET() {
@@ -151,6 +152,7 @@ export async function GET() {
     });
   } catch (e) {
     console.error("admin/chat/overview:", e);
+    captureApiError(e, { route: "/admin/chat/overview" });
     return NextResponse.json({ error: "Failed" }, { status: 500 });
   }
 }

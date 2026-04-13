@@ -7,6 +7,7 @@ import { ensureRegisteredPatientForUser } from "@/lib/queries/patient";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma/client";
 
+import { captureApiError } from "@/lib/sentry/capture";
 function firstName(fullName: string) {
   const t = fullName.trim();
   return t.split(/\s+/)[0] ?? t;
@@ -62,6 +63,7 @@ export async function GET() {
           credits: null,
           transactions: [] as { id: string; date: string; type: string; amount: number }[],
           creditPackages: CREDIT_PACKAGES,
+          partnerProgram: null,
         },
         error: null,
         meta: { timestamp: new Date().toISOString() },
@@ -79,6 +81,20 @@ export async function GET() {
     });
 
     const sessions = sessionsRaw.map(mapSessionForPatient);
+
+    const partnerProgram = patient.partnerClientId
+      ? await prisma.partnerClient.findUnique({
+          where: { id: patient.partnerClientId },
+          select: {
+            clientType: true,
+            monthlyCreditsRemaining: true,
+            onboardingStatus: true,
+            superReferralPartner: {
+              select: { name: true, referralSlug: true },
+            },
+          },
+        })
+      : null;
 
     await syncTherapyCreditBalanceFromTransactions(patient.id);
     const credit = await prisma.therapyCredit.findUnique({
@@ -133,12 +149,26 @@ export async function GET() {
           : { balance: 0, tier: "Bronze" },
         transactions,
         creditPackages: CREDIT_PACKAGES,
+        partnerProgram: partnerProgram
+          ? {
+              partnerName: partnerProgram.superReferralPartner.name,
+              partnerSlug: partnerProgram.superReferralPartner.referralSlug,
+              clientType: partnerProgram.clientType,
+              badgeLabel:
+                partnerProgram.clientType === "clinician"
+                  ? "Clinician"
+                  : "Client",
+              monthlyCreditsRemaining: partnerProgram.monthlyCreditsRemaining,
+              onboardingStatus: partnerProgram.onboardingStatus,
+            }
+          : null,
       },
       error: null,
       meta: { timestamp: new Date().toISOString() },
     });
   } catch (e) {
     console.error("client/me error:", e);
+    captureApiError(e, { route: "/patient/me" });
     return NextResponse.json(
       {
         success: false,

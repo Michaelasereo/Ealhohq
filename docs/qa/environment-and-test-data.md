@@ -29,6 +29,10 @@ Paste this (or link this file) into your **Jira Epic description**, **Confluence
 
 - If tokens are unset, some flows log errors but core UI may still work; mark tests **Blocked** for notification assertions when integrations are off.
 
+**Cron (scheduled HTTP)**
+
+- `CRON_SECRET` — shared bearer for `GET /api/cron/*` (e.g. `Authorization: Bearer <CRON_SECRET>`). Documented in [`CRON_SETUP.md`](../../CRON_SETUP.md) with `email-sequence` and **`/api/cron/partner-monthly-credits`** (partner employer pool sync; effective on the 1st WAT only).
+
 ---
 
 ## Seed accounts (`npx prisma db seed`)

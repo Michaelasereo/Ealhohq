@@ -11,6 +11,7 @@ import { prisma } from "@/lib/prisma/client";
 import { createClient } from "@/lib/supabase/server";
 import { therapistPublicLabel } from "@/lib/therapist-display-name";
 
+import { captureApiError } from "@/lib/sentry/capture";
 export const runtime = "nodejs";
 
 type Ctx = { params: Promise<{ threadId: string }> };
@@ -201,6 +202,7 @@ export async function GET(req: Request, ctx: Ctx) {
     });
   } catch (e) {
     console.error("chat messages GET:", e);
+    captureApiError(e, { route: "/chat/threads/[threadId]/messages" });
     return NextResponse.json({ error: "Failed" }, { status: 500 });
   }
 }
@@ -328,6 +330,7 @@ export async function POST(req: Request, ctx: Ctx) {
     });
   } catch (e) {
     console.error("chat messages POST:", e);
+    captureApiError(e, { route: "/chat/threads/[threadId]/messages" });
     return NextResponse.json({ error: "Failed" }, { status: 500 });
   }
 }

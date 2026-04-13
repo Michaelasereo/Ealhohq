@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma/client";
 import { watCurrentMonthStart } from "@/lib/wat-month";
 
+import { captureApiError } from "@/lib/sentry/capture";
 export async function GET() {
   try {
     const supabase = await createClient();
@@ -88,6 +89,7 @@ export async function GET() {
     });
   } catch (e) {
     console.error("Admin dashboard:", e);
+    captureApiError(e, { route: "/admin/dashboard" });
     return NextResponse.json(
       { error: "Failed to load admin dashboard" },
       { status: 500 },

@@ -21,6 +21,12 @@ interface DashboardSidebarProps {
   items: NavItem[];
   role: "therapist" | "admin";
   signOutHref: string;
+  /** General vs corporate wellness area (admin only). */
+  adminWorkspaceSwitcher?: {
+    generalHref: string;
+    partnersHref: string;
+    mode: "general" | "partners";
+  };
 }
 
 type MePayload = {
@@ -36,6 +42,7 @@ export default function DashboardSidebar({
   items,
   role,
   signOutHref,
+  adminWorkspaceSwitcher,
 }: DashboardSidebarProps) {
   const pathname = usePathname();
   const [profile, setProfile] = useState<{
@@ -77,11 +84,45 @@ export default function DashboardSidebar({
         </span>
       </div>
 
+      {adminWorkspaceSwitcher ? (
+        <div className="border-b border-border px-3 pb-3 pt-1">
+          <p className="mb-2 px-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+            Admin area
+          </p>
+          <div className="flex rounded-lg border border-border bg-muted/30 p-0.5">
+            <Link
+              href={adminWorkspaceSwitcher.generalHref}
+              className={cn(
+                "min-h-10 flex-1 rounded-md px-2 py-2 text-center text-xs font-medium transition-colors",
+                adminWorkspaceSwitcher.mode === "general"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              General
+            </Link>
+            <Link
+              href={adminWorkspaceSwitcher.partnersHref}
+              className={cn(
+                "min-h-10 flex-1 rounded-md px-2 py-2 text-center text-xs font-medium transition-colors",
+                adminWorkspaceSwitcher.mode === "partners"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              Partners
+            </Link>
+          </div>
+        </div>
+      ) : null}
+
       <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
         {items.map((item) => {
           const isActive =
-            pathname === item.href ||
-            (item.href !== "/" && pathname.startsWith(`${item.href}/`));
+            item.href === "/admin/partners"
+              ? pathname === "/admin/partners"
+              : pathname === item.href ||
+                (item.href !== "/" && pathname.startsWith(`${item.href}/`));
           const Icon = item.icon;
           return (
             <Link

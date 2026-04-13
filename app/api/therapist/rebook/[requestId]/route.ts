@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { therapistPublicLabel } from "@/lib/therapist-display-name";
 import { bookingDateStartToIso } from "@/lib/wat-datetime";
 
+import { captureApiError } from "@/lib/sentry/capture";
 type Ctx = { params: Promise<{ requestId: string }> };
 
 export async function GET(_req: Request, ctx: Ctx) {
@@ -55,6 +56,7 @@ export async function GET(_req: Request, ctx: Ctx) {
     });
   } catch (e) {
     console.error("rebook request GET:", e);
+    captureApiError(e, { route: "/therapist/rebook/[requestId]" });
     return NextResponse.json(
       { success: false, error: "Failed to load" },
       { status: 500 },
@@ -93,6 +95,7 @@ export async function DELETE(_req: Request, ctx: Ctx) {
     return NextResponse.json({ success: true });
   } catch (e) {
     console.error("rebook request DELETE:", e);
+    captureApiError(e, { route: "/therapist/rebook/[requestId]" });
     return NextResponse.json(
       { error: "Failed to cancel" },
       { status: 500 },

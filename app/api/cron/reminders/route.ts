@@ -7,6 +7,7 @@ import { runChatSlaRemindersAndEscalations } from "@/lib/chat/admin-sla-cron";
 import { prisma } from "@/lib/prisma/client";
 import { therapistPublicLabel } from "@/lib/therapist-display-name";
 
+import { captureApiError } from "@/lib/sentry/capture";
 export const runtime = "nodejs";
 
 /** Pre-session email + WhatsApp reminders are sent by `GET /api/cron/session-reminders`. */
@@ -121,6 +122,7 @@ export async function GET(req: Request) {
     });
   } catch (e) {
     console.error("cron reminders:", e);
+    captureApiError(e, { route: "/cron/reminders" });
     return NextResponse.json(
       { error: "Cron failed" },
       { status: 500 },

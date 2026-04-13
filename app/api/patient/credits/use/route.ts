@@ -8,6 +8,7 @@ import { ensureRegisteredPatientForUser } from "@/lib/queries/patient";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma/client";
 
+import { captureApiError } from "@/lib/sentry/capture";
 const bodySchema = z
   .object({
     bookingId: z.string().uuid(),
@@ -84,6 +85,7 @@ export async function POST(req: Request) {
     });
   } catch (e) {
     console.error("client credits/use POST:", e);
+    captureApiError(e, { route: "/patient/credits/use" });
     const msg = e instanceof Error ? e.message : "Failed to use credit";
     return NextResponse.json(
       { success: false, error: msg },

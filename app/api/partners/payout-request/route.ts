@@ -5,6 +5,7 @@ import { isPartnerUser } from "@/lib/auth/is-partner";
 import { prisma } from "@/lib/prisma/client";
 import { createClient } from "@/lib/supabase/server";
 
+import { captureApiError } from "@/lib/sentry/capture";
 const MIN_PAYOUT_NGN = 10_000;
 
 export async function POST() {
@@ -65,6 +66,7 @@ export async function POST() {
     return NextResponse.json({ success: true, data: { payoutId: payout.id } });
   } catch (e) {
     console.error("partners/payout-request POST:", e);
+    captureApiError(e, { route: "/partners/payout-request" });
     return NextResponse.json({ error: "Failed to request payout" }, { status: 500 });
   }
 }

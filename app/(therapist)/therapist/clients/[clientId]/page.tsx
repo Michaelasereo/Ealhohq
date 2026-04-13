@@ -1,6 +1,6 @@
 "use client";
 
-import { UserX } from "lucide-react";
+import { Brain, UserX } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
@@ -33,6 +33,20 @@ type SessionRow = {
   status: string;
   notesGenerated: boolean;
   hasNote: boolean;
+};
+
+type PsychiatricConsultRow = {
+  id: string;
+  completedAt: string | null;
+  summaryForTherapist: string | null;
+  patientConsentedToShareNotes: boolean;
+  sessionNotes: string | null;
+  prescriptions: {
+    medicationName: string;
+    dosage: string;
+    frequency: string;
+    duration: string;
+  }[];
 };
 
 type BookingPending = {
@@ -120,6 +134,23 @@ export default function TherapistClientProfilePage() {
       void queryClient.invalidateQueries({ queryKey: ["chat-threads"] });
       router.push(`/therapist/messages?thread=${threadId}`);
     },
+  });
+
+  const { data: psychSessions } = useQuery({
+    queryKey: ["therapist-client-psych", clientId],
+    queryFn: async () => {
+      const r = await fetch(
+        `/api/therapist/clients/${clientId}/psychiatric-sessions`,
+        { credentials: "include" },
+      );
+      const j = (await r.json()) as {
+        success?: boolean;
+        data?: PsychiatricConsultRow[];
+      };
+      if (!r.ok || !j.success) return [];
+      return j.data ?? [];
+    },
+    enabled: Boolean(clientId),
   });
 
   const { data, isLoading, isError, error } = useQuery({
@@ -330,6 +361,62 @@ export default function TherapistClientProfilePage() {
             ) : null}
           </CardContent>
         </Card>
+      ) : null}
+
+      {psychSessions && psychSessions.length > 0 ? (
+        <section className="space-y-3">
+          <h2 className="flex items-center gap-2 text-lg font-semibold">
+            <Brain className="size-5 text-primary" strokeWidth={1.5} />
+            Psychiatric consultations
+          </h2>
+          {psychSessions.map((ps) => (
+            <Card key={ps.id}>
+              <CardContent className="space-y-2 p-4 text-sm">
+                <p className="font-medium">
+                  Assessment
+                  {ps.completedAt
+                    ? ` · ${new Date(ps.completedAt).toLocaleDateString("en-NG", {
+                        day: "numeric",
+                        month: "short",
+                        year: "numeric",
+                      })}`
+                    : ""}
+                </p>
+                {ps.summaryForTherapist ? (
+                  <div className="rounded-lg bg-muted/50 p-3">
+                    <p className="text-xs font-medium text-muted-foreground">
+                      Psychiatrist summary
+                    </p>
+                    <p className="mt-1 text-foreground">{ps.summaryForTherapist}</p>
+                  </div>
+                ) : null}
+                {ps.prescriptions.length > 0 ? (
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground">
+                      Prescriptions recorded
+                    </p>
+                    <ul className="mt-1 space-y-1 text-xs">
+                      {ps.prescriptions.map((rx, i) => (
+                        <li key={i}>
+                          <span className="font-medium">{rx.medicationName}</span>{" "}
+                          {rx.dosage} · {rx.frequency} · {rx.duration}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+                {ps.sessionNotes ? (
+                  <p className="text-xs text-muted-foreground">{ps.sessionNotes}</p>
+                ) : null}
+                {!ps.patientConsentedToShareNotes && !ps.sessionNotes ? (
+                  <p className="text-xs italic text-muted-foreground">
+                    Full session notes not shared — client consent not given.
+                  </p>
+                ) : null}
+              </CardContent>
+            </Card>
+          ))}
+        </section>
       ) : null}
 
       <section className="space-y-3">

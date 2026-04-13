@@ -1,3 +1,5 @@
+import { withRetry } from "@/lib/retry";
+
 export interface WhatsAppMessage {
   /** Nigerian phone number e.g. "08012345678" */
   to: string;
@@ -56,22 +58,26 @@ async function sendViaTwilio(
     const authToken = process.env.TWILIO_AUTH_TOKEN!;
     const from = process.env.TWILIO_WHATSAPP_FROM!;
 
-    const response = await fetch(
-      `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`,
-      {
-        method: "POST",
-        headers: {
-          Authorization:
-            "Basic " +
-            Buffer.from(`${accountSid}:${authToken}`).toString("base64"),
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: new URLSearchParams({
-          From: from,
-          To: `whatsapp:+${message.to}`,
-          Body: message.body,
-        }).toString(),
-      },
+    const response = await withRetry(
+      () =>
+        fetch(
+          `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`,
+          {
+            method: "POST",
+            headers: {
+              Authorization:
+                "Basic " +
+                Buffer.from(`${accountSid}:${authToken}`).toString("base64"),
+              "Content-Type": "application/x-www-form-urlencoded",
+            },
+            body: new URLSearchParams({
+              From: from,
+              To: `whatsapp:+${message.to}`,
+              Body: message.body,
+            }).toString(),
+          },
+        ),
+      { attempts: 2, delayMs: 800 },
     );
 
     const data = (await response.json()) as { sid?: string; message?: string };
@@ -90,18 +96,22 @@ async function sendViaTermii(
   message: WhatsAppMessage & { to: string },
 ): Promise<WhatsAppResult> {
   try {
-    const response = await fetch("https://api.ng.termii.com/api/sms/send", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        api_key: process.env.TERMII_API_KEY,
-        to: message.to,
-        from: process.env.TERMII_SENDER_ID ?? "Ealho",
-        sms: message.body,
-        type: "plain",
-        channel: "whatsapp",
-      }),
-    });
+    const response = await withRetry(
+      () =>
+        fetch("https://api.ng.termii.com/api/sms/send", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            api_key: process.env.TERMII_API_KEY,
+            to: message.to,
+            from: process.env.TERMII_SENDER_ID ?? "Ealho",
+            sms: message.body,
+            type: "plain",
+            channel: "whatsapp",
+          }),
+        }),
+      { attempts: 2, delayMs: 800 },
+    );
 
     const data = (await response.json()) as {
       code?: string;

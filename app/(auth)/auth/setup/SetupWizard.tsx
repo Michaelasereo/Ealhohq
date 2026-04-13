@@ -8,6 +8,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
+import { EalhoBrandLogo } from "@/components/shared/EalhoBrandLogo";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -37,7 +38,18 @@ export function SetupWizard() {
   const email = (searchParams.get("email") ?? "").trim();
   const codeFromUrl = (searchParams.get("code") ?? "").trim();
   const roleParam = (searchParams.get("role") ?? "patient").toLowerCase();
-  const role = roleParam === "therapist" ? "therapist" : "patient";
+  const role: "patient" | "therapist" | "psychiatrist" =
+    roleParam === "therapist"
+      ? "therapist"
+      : roleParam === "psychiatrist"
+        ? "psychiatrist"
+        : "patient";
+  const partnerSlug = (searchParams.get("partner") ?? "").trim();
+
+  const [partnerBrand, setPartnerBrand] = useState<{
+    name: string;
+    logoUrl: string | null;
+  } | null>(null);
 
   const [step, setStep] = useState<Step>("verify");
   const [digits, setDigits] = useState(["", "", "", "", "", ""]);
@@ -47,6 +59,7 @@ export function SetupWizard() {
   const [consentTermsPrivacy, setConsentTermsPrivacy] = useState(false);
   const [consentTherapistStandards, setConsentTherapistStandards] = useState(false);
   const [consentInfoAccurate, setConsentInfoAccurate] = useState(false);
+  const [consentPsychiatristCode, setConsentPsychiatristCode] = useState(false);
   const inputsRef = useRef<(HTMLInputElement | null)[]>([]);
 
   const {
@@ -63,6 +76,28 @@ export function SetupWizard() {
       setDigits(codeFromUrl.split(""));
     }
   }, [codeFromUrl]);
+
+  useEffect(() => {
+    if (!partnerSlug) {
+      setPartnerBrand(null);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      const r = await fetch(
+        `/api/public/super-referral-brand?slug=${encodeURIComponent(partnerSlug)}`,
+      );
+      const j = (await r.json()) as {
+        success?: boolean;
+        data?: { name: string; logoUrl: string | null };
+      };
+      if (cancelled || !r.ok || !j.success || !j.data) return;
+      setPartnerBrand({ name: j.data.name, logoUrl: j.data.logoUrl });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [partnerSlug]);
 
   const code = digits.join("");
 
@@ -125,6 +160,14 @@ export function SetupWizard() {
           return;
         }
       }
+      if (role === "psychiatrist") {
+        if (!consentPsychiatristCode || !consentInfoAccurate) {
+          setError(
+            "Please confirm the Psychiatrist Code of Practice and that your information is accurate.",
+          );
+          return;
+        }
+      }
       setError(null);
       setLoading(true);
       const res = await fetch("/api/auth/setup-password", {
@@ -161,7 +204,9 @@ export function SetupWizard() {
         const consentTypes =
           role === "therapist"
             ? (["terms", "privacy", "therapist_standards", "accuracy"] as const)
-            : (["terms", "privacy"] as const);
+            : role === "psychiatrist"
+              ? (["terms", "privacy", "psychiatrist_code_of_practice", "accuracy"] as const)
+              : (["terms", "privacy"] as const);
         await fetch("/api/consent", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -174,6 +219,8 @@ export function SetupWizard() {
       window.setTimeout(() => {
         if (role === "therapist") {
           router.replace("/therapist/dashboard");
+        } else if (role === "psychiatrist") {
+          router.replace("/psychiatrist/sessions");
         } else {
           router.replace("/dashboard");
         }
@@ -188,6 +235,7 @@ export function SetupWizard() {
       consentTermsPrivacy,
       consentTherapistStandards,
       consentInfoAccurate,
+      consentPsychiatristCode,
     ],
   );
 
@@ -214,6 +262,23 @@ export function SetupWizard() {
 
   return (
     <Card className="w-full border-border bg-white shadow-md">
+        {partnerBrand ? (
+          <div className="flex items-center justify-between gap-3 border-b border-border px-6 pb-4 pt-6">
+            <EalhoBrandLogo className="pointer-events-none" imgClassName="h-8 w-auto md:h-8" />
+            {partnerBrand.logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element -- external partner logo URLs
+              <img
+                src={partnerBrand.logoUrl}
+                alt={partnerBrand.name}
+                className="max-h-11 max-w-[160px] object-contain object-right"
+              />
+            ) : (
+              <span className="max-w-[50%] text-right text-sm font-semibold text-[#292612]">
+                {partnerBrand.name}
+              </span>
+            )}
+          </div>
+        ) : null}
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl">
             {step === "verify" && "Verify your account"}
@@ -351,6 +416,46 @@ export function SetupWizard() {
                     </label>
                   </>
                 ) : null}
+                {role === "psychiatrist" ? (
+                  <>
+                    <label className="flex gap-3 text-sm leading-snug">
+                      <input
+                        type="checkbox"
+                        className="mt-1 size-4 shrink-0"
+                        checked={consentPsychiatristCode}
+                        onChange={(e) =>
+                          setConsentPsychiatristCode(e.target.checked)
+                        }
+                      />
+                      <span>
+                        I confirm that I am registered with the Medical and Dental Council
+                        of Nigeria (MDCN) and agree to the{" "}
+                        <a
+                          href="/therapist-standards"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-primary underline"
+                        >
+                          Ealho Psychiatrist Code of Practice
+                        </a>
+                      </span>
+                    </label>
+                    <label className="flex gap-3 text-sm leading-snug">
+                      <input
+                        type="checkbox"
+                        className="mt-1 size-4 shrink-0"
+                        checked={consentInfoAccurate}
+                        onChange={(e) =>
+                          setConsentInfoAccurate(e.target.checked)
+                        }
+                      />
+                      <span>
+                        I confirm that my professional credentials and information are accurate
+                        and current.
+                      </span>
+                    </label>
+                  </>
+                ) : null}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="password">New password</Label>
@@ -393,7 +498,9 @@ export function SetupWizard() {
                   loading ||
                   !consentTermsPrivacy ||
                   (role === "therapist" &&
-                    (!consentTherapistStandards || !consentInfoAccurate))
+                    (!consentTherapistStandards || !consentInfoAccurate)) ||
+                  (role === "psychiatrist" &&
+                    (!consentPsychiatristCode || !consentInfoAccurate))
                 }
                 className="h-12 min-h-[48px] w-full bg-primary text-base text-primary-foreground hover:bg-primary/90"
               >

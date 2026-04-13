@@ -10,6 +10,7 @@ import {
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma/client";
 
+import { captureApiError } from "@/lib/sentry/capture";
 const postSchema = z
   .object({
     therapistId: z.string().uuid(),
@@ -87,6 +88,7 @@ export async function GET() {
     return NextResponse.json({ success: true, data });
   } catch (e) {
     console.error("admin/earnings GET:", e);
+    captureApiError(e, { route: "/admin/earnings" });
     return NextResponse.json(
       { error: "Failed to load earnings config" },
       { status: 500 },
@@ -145,6 +147,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: true });
   } catch (e) {
     console.error("admin/earnings POST:", e);
+    captureApiError(e, { route: "/admin/earnings" });
     return NextResponse.json(
       { error: "Failed to save earnings config" },
       { status: 500 },

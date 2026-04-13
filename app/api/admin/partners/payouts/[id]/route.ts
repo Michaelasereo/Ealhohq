@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma/client";
 import { createClient } from "@/lib/supabase/server";
 import { sendWhatsApp } from "@/lib/whatsapp/client";
 
+import { captureApiError } from "@/lib/sentry/capture";
 export async function PATCH(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -72,6 +73,7 @@ export async function PATCH(
     return NextResponse.json({ success: true, data: { id: payout.id, status: payout.status } });
   } catch (e) {
     console.error("admin/partners/payouts/[id] PATCH:", e);
+    captureApiError(e, { route: "/admin/partners/payouts/[id]" });
     return NextResponse.json({ error: "Failed to update payout" }, { status: 500 });
   }
 }

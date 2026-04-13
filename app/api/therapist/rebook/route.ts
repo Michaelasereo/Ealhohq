@@ -22,6 +22,7 @@ import { appBaseUrl } from "@/lib/app-url";
 import { therapistPublicLabel } from "@/lib/therapist-display-name";
 import { watDayStart } from "@/lib/wat-datetime";
 
+import { captureApiError } from "@/lib/sentry/capture";
 const bodySchema = z
   .object({
     patientId: z.string().uuid(),
@@ -175,6 +176,7 @@ Reply DECLINE to decline this suggestion.`;
     });
   } catch (e) {
     console.error("therapist rebook POST:", e);
+    captureApiError(e, { route: "/therapist/rebook" });
     const detail =
       process.env.NODE_ENV === "development" && e instanceof Error
         ? e.message

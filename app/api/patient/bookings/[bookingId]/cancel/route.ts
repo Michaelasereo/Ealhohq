@@ -4,6 +4,7 @@ import { performSessionCancellation } from "@/lib/cancellation/perform-cancellat
 import { sendSessionCancelledWhatsApp } from "@/lib/cancellation/send-cancelled-whatsapp";
 import { createClient } from "@/lib/supabase/server";
 
+import { captureApiError } from "@/lib/sentry/capture";
 type Ctx = { params: Promise<{ bookingId: string }> };
 
 export async function POST(_req: Request, ctx: Ctx) {
@@ -43,6 +44,7 @@ async function handleCancel(ctx: Ctx) {
     return NextResponse.json({ success: true });
   } catch (e) {
     console.error("cancel booking:", e);
+    captureApiError(e, { route: "/patient/bookings/[bookingId]/cancel" });
     return NextResponse.json(
       { error: "Failed to cancel booking" },
       { status: 500 },

@@ -7,6 +7,7 @@ import { therapistPublicLabel } from "@/lib/therapist-display-name";
 import { bookingDateStartToIso } from "@/lib/wat-datetime";
 import { watDayStart, watTodayDateString } from "@/lib/wat-datetime";
 
+import { captureApiError } from "@/lib/sentry/capture";
 const patientSessionsBookingSelect = {
   id: true,
   date: true,
@@ -136,6 +137,7 @@ export async function GET() {
     });
   } catch (e) {
     console.error("client sessions GET:", e);
+    captureApiError(e, { route: "/patient/sessions" });
     return NextResponse.json(
       { error: "Failed to fetch sessions" },
       { status: 500 },

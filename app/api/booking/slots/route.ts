@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { getAvailableSlots } from "@/lib/availability/slots";
 
+import { captureApiError } from "@/lib/sentry/capture";
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
@@ -17,6 +18,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ success: true, data: slots });
   } catch (e) {
     console.error("booking/slots GET:", e);
+    captureApiError(e, { route: "/booking/slots" });
     return NextResponse.json(
       { success: false, error: "Failed to load slots" },
       { status: 500 },

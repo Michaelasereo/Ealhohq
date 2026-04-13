@@ -1,5 +1,7 @@
 import { Resend } from "resend";
 
+import { withRetry } from "@/lib/retry";
+
 import {
   bookingConfirmationHtml,
   bookingConfirmationSubject,
@@ -58,21 +60,25 @@ export async function sendTransactionalEmail(params: {
     return { success: false, error: "RESEND_API_KEY missing" };
   }
 
-  const { data, error } = await resend.emails.send({
-    from: getResendFromAddress(),
-    to: params.to,
-    subject: params.subject,
-    html: params.html,
-    ...(params.text ? { text: params.text } : {}),
-    ...(params.attachments?.length
-      ? {
-          attachments: params.attachments.map((a) => ({
-            filename: a.filename,
-            content: a.content,
-          })),
-        }
-      : {}),
-  });
+  const { data, error } = await withRetry(
+    () =>
+      resend.emails.send({
+        from: getResendFromAddress(),
+        to: params.to,
+        subject: params.subject,
+        html: params.html,
+        ...(params.text ? { text: params.text } : {}),
+        ...(params.attachments?.length
+          ? {
+              attachments: params.attachments.map((a) => ({
+                filename: a.filename,
+                content: a.content,
+              })),
+            }
+          : {}),
+      }),
+    { attempts: 2, delayMs: 600 },
+  );
 
   if (error) {
     console.error("Resend error:", error);

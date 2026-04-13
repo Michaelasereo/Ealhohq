@@ -12,6 +12,8 @@ import {
 import { getPackageOption } from "@/lib/packages/config";
 import { watDayStart } from "@/lib/wat-datetime";
 
+import { enforceApiRateLimit } from "@/lib/rate-limit/api";
+import { captureApiError } from "@/lib/sentry/capture";
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const TIME_RE = /^\d{2}:\d{2}$/;
 
@@ -87,6 +89,9 @@ async function resolveGuestPatientIdInTransaction(
 
 export async function POST(req: Request) {
   try {
+    const limited = await enforceApiRateLimit(req, "booking_create");
+    if (limited) return limited;
+
     const body = await req.json();
     const {
       therapistId,
@@ -384,6 +389,7 @@ export async function POST(req: Request) {
     });
   } catch (e) {
     console.error("Booking creation error:", e);
+    captureApiError(e, { route: "/booking/create" });
     return NextResponse.json(
       {
         success: false,

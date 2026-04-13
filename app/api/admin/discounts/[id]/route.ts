@@ -6,6 +6,7 @@ import { isAdminUser } from "@/lib/auth/is-admin";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma/client";
 
+import { captureApiError } from "@/lib/sentry/capture";
 const patchSchema = z
   .object({
     isActive: z.boolean().optional(),
@@ -67,6 +68,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
     return NextResponse.json({ success: true });
   } catch (e) {
     console.error("admin/discounts PATCH:", e);
+    captureApiError(e, { route: "/admin/discounts/[id]" });
     return NextResponse.json(
       { error: "Failed to update discount code" },
       { status: 500 },
@@ -95,6 +97,7 @@ export async function DELETE(_req: Request, ctx: Ctx) {
     return NextResponse.json({ success: true });
   } catch (e) {
     console.error("admin/discounts DELETE:", e);
+    captureApiError(e, { route: "/admin/discounts/[id]" });
     return NextResponse.json(
       { error: "Failed to delete discount code" },
       { status: 500 },

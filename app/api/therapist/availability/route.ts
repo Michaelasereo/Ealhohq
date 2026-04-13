@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma/client";
 import { watDayStart, watTodayDateString } from "@/lib/wat-datetime";
 
+import { captureApiError } from "@/lib/sentry/capture";
 export async function GET() {
   try {
     const supabase = await createClient();
@@ -45,6 +46,7 @@ export async function GET() {
     });
   } catch (e) {
     console.error("therapist/availability GET:", e);
+    captureApiError(e, { route: "/therapist/availability" });
     return NextResponse.json(
       { error: "Failed to fetch availability" },
       { status: 500 },
@@ -102,6 +104,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: true });
   } catch (e) {
     console.error("therapist/availability POST:", e);
+    captureApiError(e, { route: "/therapist/availability" });
     return NextResponse.json(
       { error: "Failed to save availability" },
       { status: 500 },

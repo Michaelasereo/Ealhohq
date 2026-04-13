@@ -2,7 +2,9 @@ import { NextResponse } from "next/server";
 
 import { findAuthUserByEmail } from "@/lib/auth/find-auth-user-by-email";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
+import { prisma } from "@/lib/prisma/client";
 
+import { captureApiError } from "@/lib/sentry/capture";
 export async function POST(req: Request) {
   try {
     const body = (await req.json()) as {
@@ -65,9 +67,18 @@ export async function POST(req: Request) {
       );
     }
 
+    const pcId = meta.partner_client_id;
+    if (typeof pcId === "string" && pcId.length > 0) {
+      await prisma.partnerClient.updateMany({
+        where: { id: pcId, userId: user.id },
+        data: { onboardingStatus: "active" },
+      });
+    }
+
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("setup-password:", error);
+    captureApiError(error, { route: "/auth/setup-password" });
     return NextResponse.json(
       { error: "Password setup failed" },
       { status: 500 },

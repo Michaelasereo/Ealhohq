@@ -6,6 +6,7 @@ import { getTherapistByProfileId } from "@/lib/queries/patient";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma/client";
 
+import { captureApiError } from "@/lib/sentry/capture";
 const patchSchema = z
   .object({
     fullName: z.string().min(1).optional(),
@@ -89,6 +90,7 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ success: true });
   } catch (e) {
     console.error("therapist/settings PATCH:", e);
+    captureApiError(e, { route: "/therapist/settings" });
     return NextResponse.json(
       { error: "Failed to update settings" },
       { status: 500 },

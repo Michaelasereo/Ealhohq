@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 
+import { AdminPharmacySettings } from "@/components/admin/AdminPharmacySettings";
+import { AdminPsychiatrySettings } from "@/components/admin/AdminPsychiatrySettings";
 import { SiteContentSettings } from "@/components/admin/SiteContentSettings";
 import { Button } from "@/components/ui/button";
 import {
@@ -231,6 +233,12 @@ export default function AdminSettingsPage() {
           <TabsTrigger value="account" className="h-10 flex-none px-4">
             Admin Account
           </TabsTrigger>
+          <TabsTrigger value="pharmacy" className="h-10 flex-none px-4">
+            Pharmacy
+          </TabsTrigger>
+          <TabsTrigger value="psychiatry" className="h-10 flex-none px-4">
+            Psychiatry
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="site-content">
@@ -432,6 +440,14 @@ export default function AdminSettingsPage() {
           </div>
         </CardContent>
       </Card>
+        </TabsContent>
+
+        <TabsContent value="pharmacy">
+          <AdminPharmacySettings />
+        </TabsContent>
+
+        <TabsContent value="psychiatry">
+          <AdminPsychiatrySettings />
         </TabsContent>
 
         <TabsContent value="account">

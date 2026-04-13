@@ -120,10 +120,10 @@ ${appUrl()}/therapist/dashboard`;
     name: string;
     code: string;
     setupLink: string;
-    role: "therapist" | "patient";
+    role: "therapist" | "patient" | "psychiatrist";
   }) => `Hi ${params.name.split(" ")[0]}! 👋
 
-You've been invited to join Ealho Therapy as a ${params.role}.
+You've been invited to join Ealho Therapy as a ${params.role === "psychiatrist" ? "consulting psychiatrist" : params.role}.
 
 Your verification code: *${params.code}*
 

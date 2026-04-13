@@ -4,6 +4,7 @@ import { finalizeTherapyPayment } from "@/lib/payment/finalize-therapy-payment";
 import { sendTherapyBookingPaidNotifications } from "@/lib/payment/send-therapy-booking-paid-notifications";
 import { getPackageOption } from "@/lib/packages/config";
 
+import { captureApiError } from "@/lib/sentry/capture";
 export async function POST(req: Request) {
   try {
     const body = await req.json();
@@ -56,6 +57,7 @@ export async function POST(req: Request) {
     });
   } catch (e) {
     console.error("Booking confirm error:", e);
+    captureApiError(e, { route: "/bookings/confirm" });
     return NextResponse.json(
       {
         success: false,

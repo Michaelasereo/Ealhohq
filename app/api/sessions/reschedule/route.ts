@@ -9,6 +9,7 @@ import { prisma } from "@/lib/prisma/client";
 import { hoursUntilSessionStart } from "@/lib/cancellation/hours-until";
 import { bookingDateToWatYmd, watDayStart } from "@/lib/wat-datetime";
 
+import { captureApiError } from "@/lib/sentry/capture";
 const bodySchema = z
   .object({
     bookingId: z.string().uuid(),
@@ -109,6 +110,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: true });
   } catch (e) {
     console.error("sessions/reschedule POST:", e);
+    captureApiError(e, { route: "/sessions/reschedule" });
     return NextResponse.json(
       { error: "Failed to reschedule" },
       { status: 500 },

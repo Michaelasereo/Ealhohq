@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+
+import { useBookingStore } from "@/stores/bookingStore";
 import { X } from "lucide-react";
 
 import { BookingStep1 } from "@/components/booking/BookingStep1";
@@ -63,6 +65,7 @@ type Props = {
 export function BookingModal({ open, onClose }: Props) {
   const [step, setStep] = useState(1);
   const [data, setData] = useState<BookingData>(EMPTY_BOOKING);
+  const hideOccupationCadre = useBookingStore((s) => s.hideOccupationInBookingModal);
 
   function updateData(updates: Partial<BookingData>) {
     setData((prev) => ({ ...prev, ...updates }));
@@ -115,7 +118,12 @@ export function BookingModal({ open, onClose }: Props) {
 
         <div className="max-h-[70vh] overflow-y-auto max-sm:max-h-[75vh]">
           {step === 1 && (
-            <BookingStep1 data={data} onUpdate={updateData} onNext={() => setStep(2)} />
+            <BookingStep1
+              data={data}
+              onUpdate={updateData}
+              onNext={() => setStep(2)}
+              hideOccupationCadre={hideOccupationCadre}
+            />
           )}
           {step === 2 && (
             <BookingStep2

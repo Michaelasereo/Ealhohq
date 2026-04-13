@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma/client";
 import { createClient } from "@/lib/supabase/server";
 import { therapistPublicLabel } from "@/lib/therapist-display-name";
 
+import { captureApiError } from "@/lib/sentry/capture";
 export async function GET() {
   try {
     const supabase = await createClient();
@@ -78,6 +79,7 @@ export async function GET() {
     });
   } catch (e) {
     console.error("patient/packages GET:", e);
+    captureApiError(e, { route: "/patient/packages" });
     return NextResponse.json(
       { success: false, error: "Failed to fetch packages" },
       { status: 500 },

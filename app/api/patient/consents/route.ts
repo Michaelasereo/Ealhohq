@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma/client";
 
+import { captureApiError } from "@/lib/sentry/capture";
 export async function GET() {
   try {
     const supabase = await createClient();
@@ -26,6 +27,7 @@ export async function GET() {
     return NextResponse.json({ success: true, data: rows });
   } catch (e) {
     console.error("client consents GET:", e);
+    captureApiError(e, { route: "/patient/consents" });
     return NextResponse.json(
       { error: "Failed to load consents" },
       { status: 500 },

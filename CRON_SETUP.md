@@ -16,6 +16,21 @@ Since this project runs on Netlify, use cron-job.org to trigger the daily email 
      - Value: `Bearer YOUR_CRON_SECRET_HERE`
 4. Save and enable.
 
+## Partner monthly credits (employer pool)
+
+Syncs active partner staff `monthlyCreditsRemaining` with the **approved** pool for the current month (WAT). The route is safe to call on a schedule; it only applies database updates on the **1st** of each month in West Africa Time.
+
+1. Create a second job (or combine with your existing cron provider).
+2. Configure:
+   - **URL:** `https://YOUR_DOMAIN/api/cron/partner-monthly-credits`
+   - **Method:** GET
+   - **Execution schedule:** Once daily (the handler **no-ops** except on the 1st WAT), or monthly on day 1 if your provider supports it.
+   - **Headers:**
+     - Key: `Authorization`
+     - Value: `Bearer YOUR_CRON_SECRET_HERE` (same `CRON_SECRET` as other cron routes)
+
+If the request is not on the 1st (WAT), the response is `{ success: true, skipped: true }` — useful for daily schedules without double-applying credits.
+
 ## Environment Variables
 
 Set these in Netlify:

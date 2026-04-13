@@ -5,6 +5,7 @@ import { isAdminUser } from "@/lib/auth/is-admin";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma/client";
 
+import { captureApiError } from "@/lib/sentry/capture";
 const DEFAULT_ID = "default";
 
 export type AdminSettingsPayload = {
@@ -77,6 +78,7 @@ export async function GET() {
     });
   } catch (e) {
     console.error("admin settings GET:", e);
+    captureApiError(e, { route: "/admin/settings" });
     return NextResponse.json(
       { error: "Failed to load settings" },
       { status: 500 },
@@ -175,6 +177,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: true });
   } catch (e) {
     console.error("admin settings POST:", e);
+    captureApiError(e, { route: "/admin/settings" });
     return NextResponse.json(
       { error: "Failed to save settings" },
       { status: 500 },

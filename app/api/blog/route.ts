@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma/client";
 
+import { captureApiError } from "@/lib/sentry/capture";
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
@@ -64,6 +65,7 @@ export async function GET(req: Request) {
     });
   } catch (error) {
     console.error("blog GET:", error);
+    captureApiError(error, { route: "/blog" });
     return NextResponse.json({ error: "Failed to fetch posts" }, { status: 500 });
   }
 }

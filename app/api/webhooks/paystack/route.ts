@@ -7,6 +7,7 @@ import { sendTherapyBookingPaidNotifications } from "@/lib/payment/send-therapy-
 import { getPaystackSecretKey } from "@/lib/paystack/server-keys";
 import { prisma } from "@/lib/prisma/client";
 
+import { captureApiError } from "@/lib/sentry/capture";
 export const runtime = "nodejs";
 
 function parseMetadata(raw: unknown): Record<string, string> {
@@ -86,6 +87,7 @@ export async function POST(req: Request) {
           }
         } catch (e) {
           console.error("Paystack webhook credit finalize error:", e);
+    captureApiError(e, { route: "/webhooks/paystack" });
         }
       }
       return NextResponse.json({ received: true });
@@ -105,6 +107,7 @@ export async function POST(req: Request) {
         }
       } catch (e) {
         console.error("Paystack webhook finalize error:", e);
+    captureApiError(e, { route: "/webhooks/paystack" });
       }
     }
 
@@ -118,6 +121,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ received: true });
   } catch (error) {
     console.error("Webhook error:", error);
+    captureApiError(error, { route: "/webhooks/paystack" });
     return NextResponse.json({ received: true });
   }
 }

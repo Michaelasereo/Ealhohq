@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma/client";
 import { sendTherapistApprovalEmail } from "@/lib/reminders/send-email";
 
+import { captureApiError } from "@/lib/sentry/capture";
 type Ctx = { params: Promise<{ therapistId: string }> };
 
 export async function PUT(_req: Request, ctx: Ctx) {
@@ -80,12 +81,16 @@ export async function PUT(_req: Request, ctx: Ctx) {
       const sent = await sendTherapistApprovalEmail(approvalEmail);
       if (!sent.success) {
         console.error("Therapist approval email:", sent.error);
+        captureApiError(sent.error ?? new Error("approval email failed"), {
+          route: "/admin/therapists/[therapistId]/approve",
+        });
       }
     }
 
     return NextResponse.json({ success: true });
   } catch (e) {
     console.error("Approve therapist:", e);
+    captureApiError(e, { route: "/admin/therapists/[therapistId]/approve" });
     return NextResponse.json(
       { error: "Failed to approve therapist" },
       { status: 500 },

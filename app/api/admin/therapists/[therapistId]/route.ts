@@ -6,6 +6,7 @@ import { isAdminUser } from "@/lib/auth/is-admin";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma/client";
 
+import { captureApiError } from "@/lib/sentry/capture";
 const patchSchema = z.object({
   sessionRate: z.number().positive(),
   sessionDuration: z.union([z.literal(50), z.literal(60), z.literal(90)]),
@@ -52,6 +53,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
     });
   } catch (e) {
     console.error("admin/therapists/[therapistId] PATCH:", e);
+    captureApiError(e, { route: "/admin/therapists/[therapistId]" });
     return NextResponse.json(
       { error: "Failed to update therapist" },
       { status: 500 },

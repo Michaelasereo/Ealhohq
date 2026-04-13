@@ -44,7 +44,8 @@ function isProtectedPath(path: string): boolean {
     path.startsWith("/profile") ||
     path.startsWith("/messages") ||
     path.startsWith("/therapist") ||
-    path.startsWith("/partners")
+    path.startsWith("/partners") ||
+    path.startsWith("/psychiatrist")
   );
 }
 
@@ -120,6 +121,9 @@ export async function middleware(request: NextRequest) {
     }
     if (role === "partner") {
       return NextResponse.redirect(new URL("/partners/dashboard", request.url));
+    }
+    if (role === "psychiatrist") {
+      return NextResponse.redirect(new URL("/psychiatrist/sessions", request.url));
     }
   }
 
@@ -213,6 +217,18 @@ export async function middleware(request: NextRequest) {
 
   if (role === "therapist" && isPatientAppPath(path)) {
     return NextResponse.redirect(new URL("/therapist/dashboard", request.url));
+  }
+
+  if (role === "psychiatrist" && isPatientAppPath(path)) {
+    return NextResponse.redirect(new URL("/psychiatrist/sessions", request.url));
+  }
+
+  if (role === "psychiatrist" && path.startsWith("/therapist")) {
+    return NextResponse.redirect(new URL("/psychiatrist/sessions", request.url));
+  }
+
+  if (role === "psychiatrist" && isAdminProtectedPath(path)) {
+    return NextResponse.redirect(new URL("/psychiatrist/sessions", request.url));
   }
 
   if (path.startsWith("/partners")) {

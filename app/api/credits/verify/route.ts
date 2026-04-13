@@ -5,6 +5,7 @@ import { getPaystackSecretKey } from "@/lib/paystack/server-keys";
 import { ensureRegisteredPatientForUser } from "@/lib/queries/patient";
 import { createClient } from "@/lib/supabase/server";
 
+import { captureApiError } from "@/lib/sentry/capture";
 function parseMetadata(raw: unknown): Record<string, string> {
   if (!raw) return {};
   if (typeof raw === "string") {
@@ -119,6 +120,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: true });
   } catch (e) {
     console.error("credits/verify:", e);
+    captureApiError(e, { route: "/credits/verify" });
     return NextResponse.json(
       { success: false, error: "Verification failed" },
       { status: 500 },

@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma/client";
 import { canJoinSessionWindow } from "@/lib/session/join-access";
 
+import { captureApiError } from "@/lib/sentry/capture";
 function channelFromBookingId(bookingId: string): string {
   const hex = bookingId.replace(/-/g, "").slice(0, 16);
   return `ealho_${hex}`;
@@ -151,6 +152,7 @@ export async function POST(req: Request) {
     });
   } catch (e) {
     console.error("Token generation error:", e);
+    captureApiError(e, { route: "/session/token" });
     return NextResponse.json(
       { success: false, error: "Failed to generate session token" },
       { status: 500 },

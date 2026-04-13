@@ -5,6 +5,7 @@ import { firstName, normalizeNgDigits } from "@/lib/rebooking/phone";
 import { prisma } from "@/lib/prisma/client";
 import { sendWhatsAppText } from "@/lib/reminders/send-whatsapp";
 
+import { captureApiError } from "@/lib/sentry/capture";
 const bodySchema = z.object({ requestId: z.string().uuid() }).strict();
 
 export async function POST(req: Request) {
@@ -56,6 +57,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: true, data: { patientFirstName: pFirst } });
   } catch (e) {
     console.error("rebook decline:", e);
+    captureApiError(e, { route: "/rebook/decline" });
     return NextResponse.json(
       { error: "Failed to decline" },
       { status: 500 },

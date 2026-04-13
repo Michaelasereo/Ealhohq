@@ -4,6 +4,7 @@ import { isAdminUser } from "@/lib/auth/is-admin";
 import { getAvailableSlots } from "@/lib/availability/slots";
 import { createClient } from "@/lib/supabase/server";
 
+import { captureApiError } from "@/lib/sentry/capture";
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 type Ctx = { params: Promise<{ therapistId: string }> };
@@ -29,6 +30,7 @@ export async function GET(req: Request, ctx: Ctx) {
     return NextResponse.json({ success: true, data: slots });
   } catch (e) {
     console.error("admin therapist slots:", e);
+    captureApiError(e, { route: "/admin/therapists/[therapistId]/slots" });
     return NextResponse.json({ error: "Failed to fetch slots" }, { status: 500 });
   }
 }

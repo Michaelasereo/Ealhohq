@@ -7,6 +7,7 @@ import {
 } from "@/lib/packages/config";
 import { prisma } from "@/lib/prisma/client";
 import { chargeSessionRateNgn } from "@/lib/referral/pricing";
+import { watCurrentMonthYm } from "@/lib/wat-datetime";
 
 const TX_OPTS = { timeout: 10_000 } as const;
 
@@ -75,7 +76,7 @@ export async function finalizeTherapyPayment(
     },
   });
 
-  if (booking.patientId) {
+  if (booking.patientId && booking.sessionType !== "psychiatric_assessment") {
     const rate = chargeSessionRateNgn(booking);
     if (packageOption.id === "single") {
       const pricing = calculatePackagePrice(rate, packageOption);
@@ -120,6 +121,18 @@ export async function finalizeTherapyPayment(
       await prisma.therapyBooking.update({
         where: { id: booking.id },
         data: { packageId: createdPackage.id },
+      });
+    }
+  }
+
+  if (booking.sessionType === "psychiatric_assessment") {
+    const ps = await prisma.psychiatricSession.findUnique({
+      where: { bookingId },
+    });
+    if (ps) {
+      await prisma.psychiatricInvitation.updateMany({
+        where: { psychiatricSessionId: ps.id, status: "pending" },
+        data: { status: "accepted" },
       });
     }
   }
@@ -433,6 +446,376 @@ export async function finalizeFreeTherapyWithDiscount(opts: {
         booking,
         sessionId: session.id,
         reference: ref,
+        shouldSendConfirmationEmail: true,
+      };
+    },
+    TX_OPTS,
+  );
+}
+
+const partnerPoolRef = (bookingId: string, monthYm: string) =>
+  `partner_pool:${monthYm}:${bookingId}`;
+
+/**
+ * Confirm a pending booking using one corporate partner monthly credit (idempotent if session exists).
+ */
+export async function finalizeTherapyPaymentWithPartnerMonthlyCredit(bookingId: string) {
+  const monthYm = watCurrentMonthYm();
+
+  return prisma.$transaction(
+    async (tx) => {
+      const existingSession = await tx.therapySession.findUnique({
+        where: { bookingId },
+      });
+
+      if (existingSession) {
+        const b = await tx.therapyBooking.findUnique({
+          where: { id: bookingId },
+          include: bookingInclude,
+        });
+        if (!b) throw new Error("Booking not found");
+        return {
+          booking: b,
+          sessionId: existingSession.id,
+          shouldSendConfirmationEmail: false,
+        };
+      }
+
+      const bookingRow = await tx.therapyBooking.findUnique({
+        where: { id: bookingId },
+        include: bookingInclude,
+      });
+      if (!bookingRow?.patientId) {
+        throw new Error("Booking not found or has no client");
+      }
+
+      const patient = await tx.therapyPatient.findUnique({
+        where: { id: bookingRow.patientId },
+        include: { partnerClient: true },
+      });
+      if (!patient?.partnerClientId || !patient.partnerClient) {
+        throw new Error("Not enrolled in a partner programme");
+      }
+
+      const pc = patient.partnerClient;
+      if (pc.onboardingStatus !== "active") {
+        throw new Error("Partner account setup is not complete");
+      }
+      if (pc.monthlyCreditsRemaining < 1) {
+        throw new Error("No covered sessions remaining this month");
+      }
+
+      const allocation = await tx.partnerCreditAllocation.findUnique({
+        where: {
+          superReferralPartnerId_month: {
+            superReferralPartnerId: pc.superReferralPartnerId,
+            month: monthYm,
+          },
+        },
+      });
+      if (!allocation) {
+        throw new Error("No employer pool exists for this month");
+      }
+      if (!allocation.approvedByAdmin) {
+        throw new Error("Employer pool is not yet approved for this month");
+      }
+
+      const decremented = await tx.$queryRawUnsafe<{ id: string }[]>(
+        `UPDATE "partner_clients"
+         SET "monthlyCreditsRemaining" = "monthlyCreditsRemaining" - 1,
+             "updatedAt" = NOW()
+         WHERE "id" = $1 AND "monthlyCreditsRemaining" >= 1
+         RETURNING "id"`,
+        pc.id,
+      );
+      if (!decremented.length) {
+        throw new Error("No covered sessions remaining this month");
+      }
+
+      await tx.$queryRawUnsafe(
+        `UPDATE "partner_credit_allocations"
+         SET "usedCredits" = "usedCredits" + 1,
+             "updatedAt" = NOW()
+         WHERE "id" = $1 AND "usedCredits" < "totalPool"`,
+        allocation.id,
+      );
+
+      const booking = await tx.therapyBooking.update({
+        where: { id: bookingId },
+        data: {
+          status: "confirmed",
+          paymentStatus: "paid",
+          paidWithCredits: false,
+          paystackReference: partnerPoolRef(bookingId, monthYm),
+          partnerClientCoverageId: pc.id,
+        },
+        include: bookingInclude,
+      });
+
+      const previousSessions = await tx.therapySession.count({
+        where: {
+          therapistId: booking.therapistId,
+          patientId: booking.patientId,
+        },
+      });
+
+      const session = await tx.therapySession.create({
+        data: {
+          bookingId: booking.id,
+          therapistId: booking.therapistId,
+          patientId: booking.patientId,
+          sessionNumber: previousSessions + 1,
+          format: "telehealth",
+          status: "scheduled",
+        },
+      });
+
+      return {
+        booking,
+        sessionId: session.id,
+        shouldSendConfirmationEmail: true,
+      };
+    },
+    TX_OPTS,
+  );
+}
+
+const partnerPsychPoolRef = (bookingId: string, monthYm: string) =>
+  `partner_pool_psych:2:${monthYm}:${bookingId}`;
+
+/**
+ * Confirm a psychiatric booking using two corporate partner monthly credits.
+ */
+export async function finalizePsychiatricPaymentWithPartnerMonthlyCredit(
+  bookingId: string,
+) {
+  const monthYm = watCurrentMonthYm();
+
+  return prisma.$transaction(
+    async (tx) => {
+      const existingSession = await tx.therapySession.findUnique({
+        where: { bookingId },
+      });
+
+      if (existingSession) {
+        const b = await tx.therapyBooking.findUnique({
+          where: { id: bookingId },
+          include: bookingInclude,
+        });
+        if (!b) throw new Error("Booking not found");
+        return {
+          booking: b,
+          sessionId: existingSession.id,
+          shouldSendConfirmationEmail: false,
+        };
+      }
+
+      const bookingRow = await tx.therapyBooking.findUnique({
+        where: { id: bookingId },
+        include: bookingInclude,
+      });
+      if (!bookingRow?.patientId) {
+        throw new Error("Booking not found or has no client");
+      }
+      if (bookingRow.sessionType !== "psychiatric_assessment") {
+        throw new Error("Not a psychiatric booking");
+      }
+
+      const patient = await tx.therapyPatient.findUnique({
+        where: { id: bookingRow.patientId },
+        include: { partnerClient: true },
+      });
+      if (!patient?.partnerClientId || !patient.partnerClient) {
+        throw new Error("Not enrolled in a partner programme");
+      }
+
+      const pc = patient.partnerClient;
+      if (pc.onboardingStatus !== "active") {
+        throw new Error("Partner account setup is not complete");
+      }
+      if (pc.monthlyCreditsRemaining < 2) {
+        throw new Error("No covered sessions remaining this month");
+      }
+
+      const allocation = await tx.partnerCreditAllocation.findUnique({
+        where: {
+          superReferralPartnerId_month: {
+            superReferralPartnerId: pc.superReferralPartnerId,
+            month: monthYm,
+          },
+        },
+      });
+      if (!allocation) {
+        throw new Error("No employer pool exists for this month");
+      }
+      if (!allocation.approvedByAdmin) {
+        throw new Error("Employer pool is not yet approved for this month");
+      }
+
+      const decremented = await tx.$queryRawUnsafe<{ id: string }[]>(
+        `UPDATE "partner_clients"
+         SET "monthlyCreditsRemaining" = "monthlyCreditsRemaining" - 2,
+             "updatedAt" = NOW()
+         WHERE "id" = $1 AND "monthlyCreditsRemaining" >= 2
+         RETURNING "id"`,
+        pc.id,
+      );
+      if (!decremented.length) {
+        throw new Error("No covered sessions remaining this month");
+      }
+
+      await tx.$queryRawUnsafe(
+        `UPDATE "partner_credit_allocations"
+         SET "usedCredits" = "usedCredits" + 2,
+             "updatedAt" = NOW()
+         WHERE "id" = $1 AND "usedCredits" + 2 <= "totalPool"`,
+        allocation.id,
+      );
+
+      const booking = await tx.therapyBooking.update({
+        where: { id: bookingId },
+        data: {
+          status: "confirmed",
+          paymentStatus: "paid",
+          paidWithCredits: false,
+          paystackReference: partnerPsychPoolRef(bookingId, monthYm),
+          partnerClientCoverageId: pc.id,
+        },
+        include: bookingInclude,
+      });
+
+      const previousSessions = await tx.therapySession.count({
+        where: {
+          therapistId: booking.therapistId,
+          patientId: booking.patientId,
+        },
+      });
+
+      const session = await tx.therapySession.create({
+        data: {
+          bookingId: booking.id,
+          therapistId: booking.therapistId,
+          patientId: booking.patientId,
+          sessionNumber: previousSessions + 1,
+          format: "telehealth",
+          status: "scheduled",
+        },
+      });
+
+      const ps = await tx.psychiatricSession.findUnique({
+        where: { bookingId },
+      });
+      if (ps) {
+        await tx.psychiatricInvitation.updateMany({
+          where: { psychiatricSessionId: ps.id, status: "pending" },
+          data: { status: "accepted" },
+        });
+      }
+
+      return {
+        booking,
+        sessionId: session.id,
+        shouldSendConfirmationEmail: true,
+      };
+    },
+    TX_OPTS,
+  );
+}
+
+/**
+ * Confirm a psychiatric booking using two wallet credits (balance units).
+ */
+export async function finalizePsychiatricPaymentWithWalletCredits(
+  bookingId: string,
+) {
+  return prisma.$transaction(
+    async (tx) => {
+      const existingSession = await tx.therapySession.findUnique({
+        where: { bookingId },
+      });
+
+      const bookingRow = await tx.therapyBooking.findUnique({
+        where: { id: bookingId },
+        include: bookingInclude,
+      });
+      if (!bookingRow?.patientId) {
+        throw new Error("Booking not found or has no client");
+      }
+      if (bookingRow.sessionType !== "psychiatric_assessment") {
+        throw new Error("Not a psychiatric booking");
+      }
+
+      if (existingSession) {
+        return {
+          booking: bookingRow,
+          sessionId: existingSession.id,
+          shouldSendConfirmationEmail: false,
+        };
+      }
+
+      const credit = await tx.therapyCredit.findUnique({
+        where: { patientId: bookingRow.patientId },
+      });
+      const balance = Number(credit?.balance ?? 0);
+      if (balance < 2) {
+        throw new Error("Insufficient credits");
+      }
+
+      await tx.therapyCredit.update({
+        where: { patientId: bookingRow.patientId },
+        data: { balance: { decrement: 2 } },
+      });
+      await tx.therapyCreditTransaction.create({
+        data: {
+          patientId: bookingRow.patientId,
+          amount: -2,
+          type: "session",
+          reference: creditRef(bookingId),
+        },
+      });
+
+      const booking = await tx.therapyBooking.update({
+        where: { id: bookingId },
+        data: {
+          status: "confirmed",
+          paymentStatus: "paid",
+          paidWithCredits: true,
+          paystackReference: creditRef(bookingId),
+        },
+        include: bookingInclude,
+      });
+
+      const previousSessions = await tx.therapySession.count({
+        where: {
+          therapistId: booking.therapistId,
+          patientId: booking.patientId,
+        },
+      });
+
+      const session = await tx.therapySession.create({
+        data: {
+          bookingId: booking.id,
+          therapistId: booking.therapistId,
+          patientId: booking.patientId,
+          sessionNumber: previousSessions + 1,
+          format: "telehealth",
+          status: "scheduled",
+        },
+      });
+
+      const ps = await tx.psychiatricSession.findUnique({
+        where: { bookingId },
+      });
+      if (ps) {
+        await tx.psychiatricInvitation.updateMany({
+          where: { psychiatricSessionId: ps.id, status: "pending" },
+          data: { status: "accepted" },
+        });
+      }
+
+      return {
+        booking,
+        sessionId: session.id,
         shouldSendConfirmationEmail: true,
       };
     },

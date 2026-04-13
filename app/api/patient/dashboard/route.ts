@@ -9,9 +9,41 @@ import { therapistPublicLabel } from "@/lib/therapist-display-name";
 import { bookingDateStartToIso } from "@/lib/wat-datetime";
 import { watDayStart, watTodayDateString } from "@/lib/wat-datetime";
 
+import { captureApiError } from "@/lib/sentry/capture";
 function firstName(fullName: string) {
   const t = fullName.trim();
   return t.split(/\s+/)[0] ?? t;
+}
+
+async function pendingPsychiatricInvitationsJson(patientId: string) {
+  const rows = await prisma.psychiatricInvitation.findMany({
+    where: {
+      patientId,
+      status: "pending",
+      expiresAt: { gt: new Date() },
+    },
+    include: {
+      psychiatricSession: {
+        include: {
+          psychiatrist: { select: { name: true } },
+          booking: {
+            select: { id: true, date: true, startTime: true, endTime: true },
+          },
+        },
+      },
+    },
+    orderBy: { expiresAt: "asc" },
+    take: 5,
+  });
+  return rows.map((r) => ({
+    id: r.id,
+    expiresAt: r.expiresAt.toISOString(),
+    psychiatristName: r.psychiatricSession.psychiatrist.name,
+    bookingId: r.psychiatricSession.booking.id,
+    date: r.psychiatricSession.booking.date.toISOString(),
+    startTime: r.psychiatricSession.booking.startTime,
+    endTime: r.psychiatricSession.booking.endTime,
+  }));
 }
 
 const patientDashboardBookingSelect = {
@@ -133,7 +165,10 @@ export async function GET(req: Request) {
       if (zone === "next") {
         return NextResponse.json({
           success: true,
-          data: { upcomingSession: null },
+          data: {
+            upcomingSession: null,
+            psychiatricInvitations: [],
+          },
         });
       }
       if (zone === "recent") {
@@ -174,6 +209,9 @@ export async function GET(req: Request) {
     }
 
     if (zone === "next") {
+      const psychiatricInvitations = await pendingPsychiatricInvitationsJson(
+        patient.id,
+      );
       const confirmedBookings = await prisma.therapyBooking.findMany({
         where: {
           patientId: patient.id,
@@ -200,6 +238,7 @@ export async function GET(req: Request) {
           upcomingSession: upcomingSession
             ? toSessionJson(upcomingSession)
             : null,
+          psychiatricInvitations,
         },
       });
     }
@@ -266,6 +305,10 @@ export async function GET(req: Request) {
     });
     const balance = Number(credit?.balance ?? 0);
 
+    const psychiatricInvitations = await pendingPsychiatricInvitationsJson(
+      patient.id,
+    );
+
     return NextResponse.json({
       success: true,
       data: {
@@ -282,10 +325,12 @@ export async function GET(req: Request) {
         totalSessions,
         mergedFromGuest,
         mergedSessionCount,
+        psychiatricInvitations,
       },
     });
   } catch (e) {
     console.error("client dashboard:", e);
+    captureApiError(e, { route: "/patient/dashboard" });
     return NextResponse.json(
       { error: "Failed to load dashboard" },
       { status: 500 },

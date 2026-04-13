@@ -42,21 +42,26 @@ model ClinicLead {
 // ─── SHARED ───────────────────────────────────────
 
 model SharedProfile {
-  id        String   @id @db.Uuid
-  role      String // patient | therapist | admin
-  fullName  String
-  phone     String?
-  status    String   @default("active") // active | inactive | suspended
-  /** User dismissed the guest-merge welcome banner */
-  guestMergeCompleted Boolean @default(false)
-  /** Guest rows were merged; show one-time banner until dismissed */
-  guestMergeBannerPending Boolean @default(false)
-  guestMergeSessionCount   Int?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                      String   @id @db.Uuid
+  role                    String // patient | therapist | admin | psychiatrist
+  fullName                String
+  phone                   String?
+  status                  String   @default("active") // active | inactive | suspended
+  /**
+   * User dismissed the guest-merge welcome banner
+   */
+  guestMergeCompleted     Boolean  @default(false)
+  /**
+   * Guest rows were merged; show one-time banner until dismissed
+   */
+  guestMergeBannerPending Boolean  @default(false)
+  guestMergeSessionCount  Int?
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
 
-  therapist TherapyTherapist?
-  patient   TherapyPatient?
+  therapist    TherapyTherapist?
+  patient      TherapyPatient?
+  psychiatrist Psychiatrist?
 
   @@map("shared_profiles")
 }
@@ -86,6 +91,7 @@ model TherapyTherapist {
   chatThreads           ChatThread[]
   earningsConfig        EarningsConfig?
   sessionPackages       TherapySessionPackage[]
+  psychiatricReferrals  PsychiatricReferral[]
 
   @@map("therapy_therapists")
 }
@@ -104,15 +110,20 @@ model TherapyPatient {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
-  profile        SharedProfile?             @relation(fields: [profileId], references: [id])
-  bookings       TherapyBooking[]
-  credits        TherapyCredit?
-  transactions   TherapyCreditTransaction[]
-  medicalHistory TherapyMedicalHistory?
-  rebookingRequests TherapyRebookingRequest[]
-  chatThreads       ChatThread[]
-  chatConsents      ChatConsent[]
-  sessionPackages   TherapySessionPackage[]
+  profile                SharedProfile?             @relation(fields: [profileId], references: [id])
+  bookings               TherapyBooking[]
+  credits                TherapyCredit?
+  transactions           TherapyCreditTransaction[]
+  medicalHistory         TherapyMedicalHistory?
+  rebookingRequests      TherapyRebookingRequest[]
+  chatThreads            ChatThread[]
+  chatConsents           ChatConsent[]
+  sessionPackages        TherapySessionPackage[]
+  partnerClientId        String?                    @unique @db.Uuid
+  partnerClient          PartnerClient?             @relation(fields: [partnerClientId], references: [id])
+  psychiatricReferrals   PsychiatricReferral[]
+  psychiatricSessions    PsychiatricSession[]
+  psychiatricInvitations PsychiatricInvitation[]
 
   @@map("therapy_patients")
 }
@@ -174,72 +185,82 @@ model TherapyAvailabilityOverride {
 // ─── BOOKINGS ─────────────────────────────────────
 
 model TherapyBooking {
-  id                String    @id @default(uuid()) @db.Uuid
-  therapistId       String    @db.Uuid
-  patientId         String?   @db.Uuid // null for guests
-  guestName         String?
-  guestEmail        String?
-  guestPhone        String?
-  guestBookingReason String?
-  professionalType  String?
-  isAnonymous       Boolean   @default(false)
-  clientAlias       String? // therapist-facing alias when isAnonymous
-  date              DateTime
-  startTime         String
-  endTime           String
-  agoraRoomId       String?
-  agoraRoomToken    String?
-  status            String    @default("pending") // pending | confirmed | completed | cancelled
-  consentConfirmed  Boolean   @default(false)
-  consentTimestamp  DateTime?
-  paystackReference String?
-  paymentStatus     String    @default("pending") // pending | paid | refunded | package_credit
-  packageId         String?   @db.Uuid
-  sessionType       String    @default("followup") // intake | followup
-  paidWithCredits   Boolean   @default(false)
-  reminder24hSent   Boolean   @default(false)
-  reminder1hSent    Boolean   @default(false)
-  cancellationReason String?
-  cancelledBy        String? // client | therapist | admin | platform
-  cancelledAt        DateTime?
-  rescheduleCount    Int       @default(0)
-  lastRescheduledAt  DateTime?
-  discountCode       String?
-  discountAmount     Decimal?  @db.Decimal(10, 2)
-  referralCode       String?
-  referralPartnerId  String?   @db.Uuid
-  isReferral         Boolean   @default(false)
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  id                      String    @id @default(uuid()) @db.Uuid
+  therapistId             String    @db.Uuid
+  patientId               String?   @db.Uuid // null for guests
+  guestName               String?
+  guestEmail              String?
+  guestPhone              String?
+  guestBookingReason      String?
+  professionalType        String?
+  isAnonymous             Boolean   @default(false)
+  clientAlias             String? // therapist-facing alias when isAnonymous
+  date                    DateTime
+  startTime               String
+  endTime                 String
+  agoraRoomId             String?
+  agoraRoomToken          String?
+  status                  String    @default("pending") // pending | confirmed | completed | cancelled
+  consentConfirmed        Boolean   @default(false)
+  consentTimestamp        DateTime?
+  paystackReference       String?
+  paymentStatus           String    @default("pending") // pending | paid | refunded | package_credit
+  packageId               String?   @db.Uuid
+  sessionType             String    @default("followup") // intake | followup | psychiatric_assessment
+  paidWithCredits         Boolean   @default(false)
+  reminder24hSent         Boolean   @default(false)
+  reminder1hSent          Boolean   @default(false)
+  cancellationReason      String?
+  cancelledBy             String? // client | therapist | admin | platform
+  cancelledAt             DateTime?
+  rescheduleCount         Int       @default(0)
+  lastRescheduledAt       DateTime?
+  discountCode            String?
+  discountAmount          Decimal?  @db.Decimal(10, 2)
+  referralCode            String?
+  referralPartnerId       String?   @db.Uuid
+  isReferral              Boolean   @default(false)
+  /**
+   * Partner programme: which staff credit was consumed (super referral pool).
+   */
+  partnerClientCoverageId String?   @db.Uuid
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
 
-  therapist TherapyTherapist @relation(fields: [therapistId], references: [id])
-  patient   TherapyPatient?  @relation(fields: [patientId], references: [id])
-  session              TherapySession?
-  rebookingRequestLink TherapyRebookingRequest?
-  discountCodeUses   DiscountCodeUse[]
-  referralPartner    ReferralPartner? @relation(fields: [referralPartnerId], references: [id])
-  referralSession    ReferralSession?
-  package            TherapySessionPackage? @relation(fields: [packageId], references: [id])
+  therapist             TherapyTherapist         @relation(fields: [therapistId], references: [id])
+  patient               TherapyPatient?          @relation(fields: [patientId], references: [id])
+  session               TherapySession?
+  rebookingRequestLink  TherapyRebookingRequest?
+  discountCodeUses      DiscountCodeUse[]
+  referralPartner       ReferralPartner?         @relation(fields: [referralPartnerId], references: [id])
+  referralSession       ReferralSession?
+  package               TherapySessionPackage?   @relation(fields: [packageId], references: [id])
+  psychiatricReferral   PsychiatricReferral?
+  psychiatricSession    PsychiatricSession?
+  partnerClientCoverage PartnerClient?           @relation("PartnerCoverageOnBooking", fields: [partnerClientCoverageId], references: [id])
 
+  @@index([therapistId])
+  @@index([patientId])
+  @@index([date])
   @@map("therapy_bookings")
 }
 
 model TherapySessionPackage {
-  id                String   @id @default(uuid()) @db.Uuid
-  patientId         String   @db.Uuid
-  therapistId       String   @db.Uuid
+  id                String    @id @default(uuid()) @db.Uuid
+  patientId         String    @db.Uuid
+  therapistId       String    @db.Uuid
   packageType       String // single | package_4 | package_6 | package_8
   totalSessions     Int
-  usedSessions      Int      @default(0)
+  usedSessions      Int       @default(0)
   remainingSessions Int
-  pricePerSession   Decimal  @db.Decimal(10, 2)
-  totalPaid         Decimal  @db.Decimal(10, 2)
-  discountPercent   Int      @default(0)
+  pricePerSession   Decimal   @db.Decimal(10, 2)
+  totalPaid         Decimal   @db.Decimal(10, 2)
+  discountPercent   Int       @default(0)
   paystackReference String?
-  status            String   @default("active") // active | exhausted | expired | refunded
+  status            String    @default("active") // active | exhausted | expired | refunded
   expiresAt         DateTime?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
   patient   TherapyPatient   @relation(fields: [patientId], references: [id])
   therapist TherapyTherapist @relation(fields: [therapistId], references: [id])
@@ -253,30 +274,33 @@ model TherapySessionPackage {
 // ─── SESSIONS ─────────────────────────────────────
 
 model TherapySession {
-  id               String    @id @default(uuid()) @db.Uuid
-  bookingId        String    @unique @db.Uuid
-  therapistId      String    @db.Uuid
-  patientId        String?   @db.Uuid
-  sessionNumber    Int       @default(1)
-  startedAt        DateTime?
-  endedAt          DateTime?
-  durationMinutes  Int?
-  format           String    @default("telehealth") // telehealth | in-person
-  status           String    @default("scheduled") // scheduled | in-progress | completed | no-show | cancelled
-  agoraTranscript  String? // deleted after note generation
-  notesGenerated   Boolean   @default(false)
-  notesGeneratedAt DateTime?
-  generatedBy      String? // claude | deepseek (internal only)
-  therapistEarnings Decimal? @db.Decimal(10, 2)
-  platformEarnings  Decimal? @db.Decimal(10, 2)
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  id                String    @id @default(uuid()) @db.Uuid
+  bookingId         String    @unique @db.Uuid
+  therapistId       String    @db.Uuid
+  patientId         String?   @db.Uuid
+  sessionNumber     Int       @default(1)
+  startedAt         DateTime?
+  endedAt           DateTime?
+  durationMinutes   Int?
+  format            String    @default("telehealth") // telehealth | in-person
+  status            String    @default("scheduled") // scheduled | in-progress | completed | no-show | cancelled
+  agoraTranscript   String? // deleted after note generation
+  notesGenerated    Boolean   @default(false)
+  notesGeneratedAt  DateTime?
+  generatedBy       String? // claude | deepseek (internal only)
+  therapistEarnings Decimal?  @db.Decimal(10, 2)
+  platformEarnings  Decimal?  @db.Decimal(10, 2)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
-  booking   TherapyBooking      @relation(fields: [bookingId], references: [id])
-  therapist TherapyTherapist    @relation(fields: [therapistId], references: [id])
-  note      TherapySessionNote?
-  feedbacks TherapyFeedback[]
+  booking                       TherapyBooking        @relation(fields: [bookingId], references: [id])
+  therapist                     TherapyTherapist      @relation(fields: [therapistId], references: [id])
+  note                          TherapySessionNote?
+  feedbacks                     TherapyFeedback[]
+  psychiatricReferralsTriggered PsychiatricReferral[]
 
+  @@index([therapistId])
+  @@index([patientId])
   @@map("therapy_sessions")
 }
 
@@ -346,20 +370,20 @@ model TherapyFeedback {
 // ─── REBOOKING (therapist-initiated) ──────────────
 
 model TherapyRebookingRequest {
-  id              String    @id @default(uuid()) @db.Uuid
-  therapistId     String    @db.Uuid
-  patientId       String    @db.Uuid
-  bookingId       String?   @unique @db.Uuid
-  suggestedDate   DateTime
-  suggestedTime   String
-  sessionType     String    @default("followup")
-  message         String?
-  status          String    @default("pending")
-  expiresAt       DateTime
-  respondedAt     DateTime?
-  notifiedAt      DateTime?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  id            String    @id @default(uuid()) @db.Uuid
+  therapistId   String    @db.Uuid
+  patientId     String    @db.Uuid
+  bookingId     String?   @unique @db.Uuid
+  suggestedDate DateTime
+  suggestedTime String
+  sessionType   String    @default("followup")
+  message       String?
+  status        String    @default("pending")
+  expiresAt     DateTime
+  respondedAt   DateTime?
+  notifiedAt    DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
   therapist TherapyTherapist @relation(fields: [therapistId], references: [id])
   patient   TherapyPatient   @relation(fields: [patientId], references: [id])
@@ -421,18 +445,18 @@ model EarningsConfig {
 // ─── CHAT (patient ↔ therapist, encrypted content) ─
 
 model ChatThread {
-  id           String    @id @default(uuid()) @db.Uuid
-  patientId    String    @db.Uuid
-  therapistId  String    @db.Uuid
-  status       String    @default("active") // active | paused | closed | pending_deletion | deleted
-  consentGiven Boolean   @default(false)
-  consentAt    DateTime?
-  slaPatientMessageId     String?   @db.Uuid
-  slaTherapistRemindedAt  DateTime?
-  slaAdminNotifiedAt      DateTime?
-  deletionScheduledAt     DateTime?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  id                     String    @id @default(uuid()) @db.Uuid
+  patientId              String    @db.Uuid
+  therapistId            String    @db.Uuid
+  status                 String    @default("active") // active | paused | closed | pending_deletion | deleted
+  consentGiven           Boolean   @default(false)
+  consentAt              DateTime?
+  slaPatientMessageId    String?   @db.Uuid
+  slaTherapistRemindedAt DateTime?
+  slaAdminNotifiedAt     DateTime?
+  deletionScheduledAt    DateTime?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
 
   patient   TherapyPatient   @relation(fields: [patientId], references: [id])
   therapist TherapyTherapist @relation(fields: [therapistId], references: [id])
@@ -444,28 +468,28 @@ model ChatThread {
 }
 
 model ChatMessage {
-  id          String    @id @default(uuid()) @db.Uuid
-  threadId    String    @db.Uuid
-  senderId    String    @db.Uuid
-  senderRole  String
-  content     String
-  contentIv   String
-  isRead      Boolean   @default(false)
-  readAt      DateTime?
-  isDeleted   Boolean   @default(false)
-  deletedAt   DateTime?
-  riskLevel   String?
-  riskType    String?
-  riskScanned Boolean   @default(false)
-  isFlagged   Boolean   @default(false)
-  flaggedAt   DateTime?
-  flagReason  String?
-  isResolved      Boolean   @default(false)
-  resolvedAt      DateTime?
-  resolvedBy      String?   @db.Uuid
-  resolutionNote  String?
+  id                  String    @id @default(uuid()) @db.Uuid
+  threadId            String    @db.Uuid
+  senderId            String    @db.Uuid
+  senderRole          String
+  content             String
+  contentIv           String
+  isRead              Boolean   @default(false)
+  readAt              DateTime?
+  isDeleted           Boolean   @default(false)
+  deletedAt           DateTime?
+  riskLevel           String?
+  riskType            String?
+  riskScanned         Boolean   @default(false)
+  isFlagged           Boolean   @default(false)
+  flaggedAt           DateTime?
+  flagReason          String?
+  isResolved          Boolean   @default(false)
+  resolvedAt          DateTime?
+  resolvedBy          String?   @db.Uuid
+  resolutionNote      String?
   highRiskEscalatedAt DateTime?
-  createdAt   DateTime  @default(now())
+  createdAt           DateTime  @default(now())
 
   thread ChatThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
 
@@ -488,14 +512,14 @@ model ConsentRecord {
 }
 
 model ChatAuditLog {
-  id         String   @id @default(uuid()) @db.Uuid
-  threadId   String   @db.Uuid
-  actorId    String   @db.Uuid
-  actorRole  String
-  action     String
-  metadata   Json?
-  ipAddress  String?
-  createdAt  DateTime @default(now())
+  id        String   @id @default(uuid()) @db.Uuid
+  threadId  String   @db.Uuid
+  actorId   String   @db.Uuid
+  actorRole String
+  action    String
+  metadata  Json?
+  ipAddress String?
+  createdAt DateTime @default(now())
 
   thread ChatThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
 
@@ -520,26 +544,26 @@ model ChatConsent {
 // ─── REFERRAL PARTNERS ────────────────────────────
 
 model ReferralPartner {
-  id              String   @id @default(uuid()) @db.Uuid
-  name            String
-  contactName     String
-  email           String   @unique
-  phone           String
-  address         String?
-  city            String
-  referralCode    String   @unique
-  referralSlug    String   @unique
-  tier            String   @default("standard")
-  feePerSession   Decimal  @default(3000) @db.Decimal(10, 2)
-  bankName        String?
-  accountNumber   String?
-  accountName     String?
-  isActive        Boolean  @default(true)
-  totalReferred   Int      @default(0)
-  totalEarned     Decimal  @default(0) @db.Decimal(10, 2)
-  totalPaid       Decimal  @default(0) @db.Decimal(10, 2)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id            String   @id @default(uuid()) @db.Uuid
+  name          String
+  contactName   String
+  email         String   @unique
+  phone         String
+  address       String?
+  city          String
+  referralCode  String   @unique
+  referralSlug  String   @unique
+  tier          String   @default("standard")
+  feePerSession Decimal  @default(3000) @db.Decimal(10, 2)
+  bankName      String?
+  accountNumber String?
+  accountName   String?
+  isActive      Boolean  @default(true)
+  totalReferred Int      @default(0)
+  totalEarned   Decimal  @default(0) @db.Decimal(10, 2)
+  totalPaid     Decimal  @default(0) @db.Decimal(10, 2)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   referrals ReferralSession[]
   payouts   ReferralPayout[]
@@ -559,9 +583,9 @@ model ReferralSession {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  partner ReferralPartner  @relation(fields: [partnerId], references: [id], onDelete: Cascade)
-  payout  ReferralPayout?  @relation(fields: [payoutId], references: [id])
-  booking TherapyBooking   @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  partner ReferralPartner @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  payout  ReferralPayout? @relation(fields: [payoutId], references: [id])
+  booking TherapyBooking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
 
   @@index([partnerId])
   @@index([patientEmail])
@@ -594,26 +618,26 @@ model ReferralPayout {
 // ─── MARKETING / CMS ───────────────────────────────
 
 model BlogPost {
-  id          String   @id @default(uuid()) @db.Uuid
+  id          String    @id @default(uuid()) @db.Uuid
   title       String
-  slug        String   @unique
+  slug        String    @unique
   excerpt     String
   content     String
   coverImage  String?
-  category    String   @default("Mental Health")
+  category    String    @default("Mental Health")
   tags        String[]
-  author      String   @default("Ealho Team")
-  authorRole  String   @default("Editorial Team")
+  author      String    @default("Ealho Team")
+  authorRole  String    @default("Editorial Team")
   authorPhoto String?
-  status      String   @default("draft") // draft | published
-  featured    Boolean  @default(false)
-  readingTime Int      @default(5)
+  status      String    @default("draft") // draft | published
+  featured    Boolean   @default(false)
+  readingTime Int       @default(5)
   metaTitle   String?
   metaDesc    String?
   publishedAt DateTime?
-  viewCount   Int      @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  viewCount   Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   feedbacks BlogPostFeedback[]
 
@@ -642,18 +666,18 @@ model SiteConfig {
 }
 
 model Review {
-  id              String   @id @default(uuid()) @db.Uuid
-  authorName      String
-  authorRole      String?
-  authorLocation  String?
-  content         String
-  rating          Int
-  isAnonymous     Boolean  @default(true)
-  isApproved  Boolean  @default(false)
-  isPublished Boolean  @default(false)
-  isFeatured  Boolean  @default(false)
-  source      String   @default("platform") // platform | google | manual
-  createdAt   DateTime @default(now())
+  id             String   @id @default(uuid()) @db.Uuid
+  authorName     String
+  authorRole     String?
+  authorLocation String?
+  content        String
+  rating         Int
+  isAnonymous    Boolean  @default(true)
+  isApproved     Boolean  @default(false)
+  isPublished    Boolean  @default(false)
+  isFeatured     Boolean  @default(false)
+  source         String   @default("platform") // platform | google | manual
+  createdAt      DateTime @default(now())
 
   @@index([isPublished, isFeatured])
   @@map("reviews")
@@ -686,4 +710,271 @@ model NewsletterSend {
   createdAt DateTime @default(now())
 
   @@map("newsletter_sends")
+}
+
+// ─── SUPER REFERRAL (CORPORATE WELLNESS) ─────────
+
+/**
+ * Telehealth / umbrella org that may refer multiple corporate partners (independent partners omit this).
+ */
+model SuperPartner {
+  id           String   @id @default(uuid()) @db.Uuid
+  name         String
+  contactEmail String?
+  contactName  String?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  corporatePartners SuperReferralPartner[]
+
+  @@map("super_partners")
+}
+
+model SuperReferralPartner {
+  id              String    @id @default(uuid()) @db.Uuid
+  /**
+   * When set, this corporate partner sits under a telehealth super-partner; null = independent.
+   */
+  superPartnerId  String?   @db.Uuid
+  name            String
+  logoUrl         String?
+  contactEmail    String
+  contactName     String
+  referralSlug    String    @unique
+  monthlyPoolSize Int       @default(0)
+  poolApprovedAt  DateTime?
+  status          String    @default("pending_payment") // pending_payment | active | suspended
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  superPartner      SuperPartner?             @relation(fields: [superPartnerId], references: [id], onDelete: SetNull)
+  partnerClients    PartnerClient[]
+  creditAllocations PartnerCreditAllocation[]
+
+  @@index([superPartnerId])
+  @@map("super_referral_partners")
+}
+
+model PartnerClient {
+  id                      String   @id @default(uuid()) @db.Uuid
+  superReferralPartnerId  String   @db.Uuid
+  userId                  String?  @db.Uuid
+  clientType              String // clinician | non_clinician
+  monthlyCreditsRemaining Int      @default(0)
+  onboardingStatus        String   @default("pending") // pending | active
+  csvUploadBatchId        String?  @db.Uuid
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  superReferralPartner SuperReferralPartner @relation(fields: [superReferralPartnerId], references: [id], onDelete: Cascade)
+  patient              TherapyPatient?
+  coverageBookings     TherapyBooking[]     @relation("PartnerCoverageOnBooking")
+
+  @@index([superReferralPartnerId])
+  @@index([userId])
+  @@map("partner_clients")
+}
+
+model PartnerCreditAllocation {
+  id                     String    @id @default(uuid()) @db.Uuid
+  superReferralPartnerId String    @db.Uuid
+  month                  String
+  totalPool              Int
+  usedCredits            Int       @default(0)
+  approvedByAdmin        Boolean   @default(false)
+  approvedAt             DateTime?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  superReferralPartner SuperReferralPartner @relation(fields: [superReferralPartnerId], references: [id], onDelete: Cascade)
+
+  @@unique([superReferralPartnerId, month])
+  @@map("partner_credit_allocations")
+}
+
+// ─── PSYCHIATRY REFERRAL PATHWAY ───────────────────
+
+model PharmacyPartner {
+  id            String   @id @default(uuid()) @db.Uuid
+  name          String
+  location      String
+  contactPerson String
+  contactEmail  String
+  contactPhone  String
+  isActive      Boolean  @default(true)
+  isDefault     Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  psychiatrists       Psychiatrist[]
+  psychiatricSessions PsychiatricSession[]
+
+  @@map("pharmacy_partners")
+}
+
+model Psychiatrist {
+  id                     String   @id @default(uuid()) @db.Uuid
+  name                   String
+  email                  String   @unique
+  phone                  String
+  mdcnRegistrationNumber String
+  specialisation         String
+  sessionRate            Decimal  @db.Decimal(10, 2)
+  sessionDuration        Int      @default(60)
+  profilePhoto           String?
+  bio                    String?
+  pharmacyPartnerId      String?  @db.Uuid
+  profileId              String?  @unique @db.Uuid
+  isActive               Boolean  @default(true)
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  pharmacyPartner       PharmacyPartner?                   @relation(fields: [pharmacyPartnerId], references: [id])
+  profile               SharedProfile?                     @relation(fields: [profileId], references: [id])
+  availabilitySchedules PsychiatristAvailabilitySchedule[]
+  availabilityOverrides PsychiatristAvailabilityOverride[]
+  psychiatricSessions   PsychiatricSession[]
+
+  @@map("psychiatrists")
+}
+
+model PsychiatristAvailabilitySchedule {
+  id                     String   @id @default(uuid()) @db.Uuid
+  psychiatristId         String   @db.Uuid
+  dayOfWeek              Int
+  startTime              String
+  endTime                String
+  sessionDurationMinutes Int      @default(50)
+  bufferMinutes          Int      @default(0)
+  bookingWindowWeeks     Int      @default(4)
+  minimumNoticeHours     Int      @default(2)
+  isActive               Boolean  @default(true)
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  psychiatrist Psychiatrist @relation(fields: [psychiatristId], references: [id], onDelete: Cascade)
+
+  @@map("psychiatrist_availability_schedules")
+}
+
+model PsychiatristAvailabilityOverride {
+  id             String   @id @default(uuid()) @db.Uuid
+  psychiatristId String   @db.Uuid
+  date           DateTime
+  isBlocked      Boolean  @default(true)
+  startTime      String?
+  endTime        String?
+  reason         String?
+  createdAt      DateTime @default(now())
+
+  psychiatrist Psychiatrist @relation(fields: [psychiatristId], references: [id], onDelete: Cascade)
+
+  @@map("psychiatrist_availability_overrides")
+}
+
+model PsychiatricReferral {
+  id               String   @id @default(uuid()) @db.Uuid
+  therapistId      String   @db.Uuid
+  patientId        String   @db.Uuid
+  therapySessionId String   @unique @db.Uuid
+  clinicalReason   String
+  status           String   @default("flagged") // flagged | booked | completed | declined | cancelled
+  adminNotes       String?
+  therapyBookingId String?  @unique @db.Uuid
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  therapist          TherapyTherapist    @relation(fields: [therapistId], references: [id], onDelete: Cascade)
+  patient            TherapyPatient      @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  therapySession     TherapySession      @relation(fields: [therapySessionId], references: [id], onDelete: Cascade)
+  therapyBooking     TherapyBooking?     @relation(fields: [therapyBookingId], references: [id])
+  psychiatricSession PsychiatricSession?
+
+  @@index([therapistId])
+  @@index([patientId])
+  @@index([status])
+  @@map("psychiatric_referrals")
+}
+
+model PsychiatricSession {
+  id                           String    @id @default(uuid()) @db.Uuid
+  bookingId                    String    @unique @db.Uuid
+  psychiatristId               String    @db.Uuid
+  patientId                    String    @db.Uuid
+  referralId                   String    @unique @db.Uuid
+  /**
+   * scheduled | completed | cancelled | no_show
+   */
+  status                       String    @default("scheduled")
+  sessionNotes                 String?
+  summaryForTherapist          String?
+  pharmacyPartnerId            String?   @db.Uuid
+  pharmacyCode                 String?   @unique
+  prescriptionSent             Boolean   @default(false)
+  termsAccepted                Boolean   @default(false)
+  patientConsentedToShareNotes Boolean   @default(false)
+  completedAt                  DateTime?
+  createdAt                    DateTime  @default(now())
+  updatedAt                    DateTime  @updatedAt
+
+  booking         TherapyBooking            @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  psychiatrist    Psychiatrist              @relation(fields: [psychiatristId], references: [id])
+  patient         TherapyPatient            @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  referral        PsychiatricReferral       @relation(fields: [referralId], references: [id])
+  pharmacyPartner PharmacyPartner?          @relation(fields: [pharmacyPartnerId], references: [id])
+  prescriptions   PsychiatricPrescription[]
+  invitation      PsychiatricInvitation?
+
+  @@index([psychiatristId])
+  @@index([patientId])
+  @@map("psychiatric_sessions")
+}
+
+model PsychiatricInvitation {
+  id                   String   @id @default(uuid()) @db.Uuid
+  psychiatricSessionId String   @unique @db.Uuid
+  patientId            String   @db.Uuid
+  status               String   @default("pending") // pending | accepted | declined
+  expiresAt            DateTime
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  psychiatricSession PsychiatricSession @relation(fields: [psychiatricSessionId], references: [id], onDelete: Cascade)
+  patient            TherapyPatient     @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@index([patientId])
+  @@map("psychiatric_invitations")
+}
+
+model AdminNotification {
+  id           String   @id @default(uuid()) @db.Uuid
+  type         String
+  title        String
+  message      String
+  resourceId   String?  @db.Uuid
+  resourceType String?
+  isRead       Boolean  @default(false)
+  createdAt    DateTime @default(now())
+
+  @@index([isRead])
+  @@index([createdAt])
+  @@map("admin_notifications")
+}
+
+model PsychiatricPrescription {
+  id                   String   @id @default(uuid()) @db.Uuid
+  psychiatricSessionId String   @db.Uuid
+  medicationName       String
+  category             String
+  dosage               String
+  frequency            String
+  duration             String
+  notes                String?
+  createdAt            DateTime @default(now())
+
+  psychiatricSession PsychiatricSession @relation(fields: [psychiatricSessionId], references: [id], onDelete: Cascade)
+
+  @@index([psychiatricSessionId])
+  @@map("psychiatric_prescriptions")
 }

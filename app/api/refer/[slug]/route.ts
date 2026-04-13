@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { captureApiError } from "@/lib/sentry/capture";
 type Ctx = { params: Promise<{ slug: string }> };
 
 export async function POST(req: Request, ctx: Ctx) {
@@ -32,6 +33,7 @@ export async function POST(req: Request, ctx: Ctx) {
     });
   } catch (e) {
     console.error("refer POST:", e);
+    captureApiError(e, { route: "/refer/[slug]" });
     return NextResponse.json(
       { success: false, error: "Could not submit referral" },
       { status: 500 },

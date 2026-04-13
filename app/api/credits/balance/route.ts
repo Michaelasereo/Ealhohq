@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma/client";
 import { tierFromBalance } from "@/lib/credits/purchase-config";
 
+import { captureApiError } from "@/lib/sentry/capture";
 export async function GET() {
   try {
     const supabase = await createClient();
@@ -53,6 +54,7 @@ export async function GET() {
     });
   } catch (e) {
     console.error("credits/balance:", e);
+    captureApiError(e, { route: "/credits/balance" });
     return NextResponse.json(
       { error: "Failed to load credits" },
       { status: 500 },

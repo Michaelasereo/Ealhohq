@@ -12,6 +12,7 @@ import {
 import { watCurrentMonthStart } from "@/lib/wat-month";
 import { getDisplayName } from "@/lib/utils/patient-display";
 
+import { captureApiError } from "@/lib/sentry/capture";
 function shareForSession(
   therapistEarnings: unknown,
   sessionRateNgn: number,
@@ -137,6 +138,7 @@ export async function GET() {
     });
   } catch (e) {
     console.error("therapist/earnings GET:", e);
+    captureApiError(e, { route: "/therapist/earnings" });
     return NextResponse.json(
       { error: "Failed to load earnings" },
       { status: 500 },

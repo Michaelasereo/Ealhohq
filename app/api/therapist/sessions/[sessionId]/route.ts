@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma/client";
 import { bookingDateStartToIso } from "@/lib/wat-datetime";
 import { getClientId, getDisplayName } from "@/lib/utils/patient-display";
 
+import { captureApiError } from "@/lib/sentry/capture";
 type Ctx = { params: Promise<{ sessionId: string }> };
 
 export async function GET(_req: Request, ctx: Ctx) {
@@ -86,6 +87,11 @@ export async function GET(_req: Request, ctx: Ctx) {
       session.booking.startTime,
     );
 
+    const psychiatricReferral = await prisma.psychiatricReferral.findUnique({
+      where: { therapySessionId: session.id },
+      select: { id: true, clinicalReason: true, status: true },
+    });
+
     return NextResponse.json({
       success: true,
       data: {
@@ -115,12 +121,14 @@ export async function GET(_req: Request, ctx: Ctx) {
           clientId: getClientId(guest.id),
           professionalType: guest.professionalType,
         },
+        psychiatricReferral,
       },
       error: null,
       meta: { timestamp: new Date().toISOString() },
     });
   } catch (e) {
     console.error("therapist session GET:", e);
+    captureApiError(e, { route: "/therapist/sessions/[sessionId]" });
     return NextResponse.json(
       {
         success: false,

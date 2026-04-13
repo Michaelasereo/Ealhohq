@@ -12,6 +12,7 @@ import {
 import { therapistFirstNameForGreeting } from "@/lib/therapist-display-name";
 import { watCurrentMonthStart } from "@/lib/wat-month";
 
+import { captureApiError } from "@/lib/sentry/capture";
 const therapistDashboardBookingSelect = {
   id: true,
   date: true,
@@ -241,6 +242,7 @@ export async function GET(req: Request) {
     });
   } catch (e) {
     console.error("Dashboard error:", e);
+    captureApiError(e, { route: "/therapist/dashboard" });
     const message =
       e instanceof Error ? e.message : "Failed to load dashboard";
     return NextResponse.json(

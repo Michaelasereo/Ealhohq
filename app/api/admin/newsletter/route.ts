@@ -5,6 +5,7 @@ import { z } from "zod";
 import { requireAdminUser } from "@/lib/auth/require-admin-api";
 import { prisma } from "@/lib/prisma/client";
 
+import { captureApiError } from "@/lib/sentry/capture";
 const resend = new Resend(process.env.RESEND_API_KEY);
 const FROM_EMAIL = "Michael from Ealho <hello@ealho.com>";
 
@@ -86,6 +87,7 @@ export async function GET(req: Request) {
     });
   } catch (error) {
     console.error("admin newsletter GET", error);
+    captureApiError(error, { route: "/admin/newsletter" });
     return NextResponse.json({ error: "Failed to load newsletter data" }, { status: 500 });
   }
 }
@@ -130,6 +132,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: true, sentCount });
   } catch (error) {
     console.error("admin newsletter POST", error);
+    captureApiError(error, { route: "/admin/newsletter" });
     return NextResponse.json({ error: "Failed to send newsletter" }, { status: 500 });
   }
 }

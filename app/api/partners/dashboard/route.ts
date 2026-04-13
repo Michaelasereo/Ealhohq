@@ -5,6 +5,7 @@ import { isPartnerUser } from "@/lib/auth/is-partner";
 import { prisma } from "@/lib/prisma/client";
 import { createClient } from "@/lib/supabase/server";
 
+import { captureApiError } from "@/lib/sentry/capture";
 export async function GET() {
   try {
     const supabase = await createClient();
@@ -74,6 +75,7 @@ export async function GET() {
     });
   } catch (e) {
     console.error("partners/dashboard GET:", e);
+    captureApiError(e, { route: "/partners/dashboard" });
     return NextResponse.json({ error: "Failed to load partner dashboard" }, { status: 500 });
   }
 }

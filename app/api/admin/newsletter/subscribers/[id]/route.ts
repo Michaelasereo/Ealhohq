@@ -4,6 +4,7 @@ import { z } from "zod";
 import { requireAdminUser } from "@/lib/auth/require-admin-api";
 import { prisma } from "@/lib/prisma/client";
 
+import { captureApiError } from "@/lib/sentry/capture";
 const actionSchema = z.object({
   action: z.enum(["advance", "reset", "remove"]),
 });
@@ -48,6 +49,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("admin newsletter subscriber PATCH", error);
+    captureApiError(error, { route: "/admin/newsletter/subscribers/[id]" });
     return NextResponse.json({ error: "Failed to update subscriber" }, { status: 500 });
   }
 }

@@ -6,6 +6,7 @@ import { ensureRegisteredPatientForUser } from "@/lib/queries/patient";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma/client";
 
+import { captureApiError } from "@/lib/sentry/capture";
 export async function GET() {
   try {
     const supabase = await createClient();
@@ -41,6 +42,7 @@ export async function GET() {
     });
   } catch (e) {
     console.error("client credits GET:", e);
+    captureApiError(e, { route: "/patient/credits" });
     return NextResponse.json(
       { error: "Failed to fetch credits" },
       { status: 500 },

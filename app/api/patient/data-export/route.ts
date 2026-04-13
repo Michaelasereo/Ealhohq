@@ -4,6 +4,7 @@ import { ensureRegisteredPatientForUser } from "@/lib/queries/patient";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma/client";
 
+import { captureApiError } from "@/lib/sentry/capture";
 export const runtime = "nodejs";
 
 export async function POST() {
@@ -79,6 +80,7 @@ export async function POST() {
     return NextResponse.json({ success: true, data: payload });
   } catch (e) {
     console.error("client data-export:", e);
+    captureApiError(e, { route: "/patient/data-export" });
     return NextResponse.json(
       { error: "Failed to export data" },
       { status: 500 },

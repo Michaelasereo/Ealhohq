@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { getBurnoutFreebieConfig, getFreebiesBucket } from "@/lib/burnout-freebie";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 
+import { captureApiError } from "@/lib/sentry/capture";
 export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
@@ -17,6 +18,7 @@ export async function GET(req: Request) {
     const { data, error } = await supabase.storage.from(bucket).download(storagePath);
     if (error || !data) {
       console.error("burnout-guide download route:", error);
+    captureApiError(error, { route: "/burnout-guide/download" });
       return NextResponse.json({ error: "Unable to load guide" }, { status: 503 });
     }
 
@@ -42,6 +44,7 @@ export async function GET(req: Request) {
     });
   } catch (e) {
     console.error("burnout-guide download route error:", e);
+    captureApiError(e, { route: "/burnout-guide/download" });
     return NextResponse.json({ error: "Failed to download guide" }, { status: 500 });
   }
 }

@@ -9,7 +9,9 @@ import {
   EMPTY_BOOKING,
   type BookingData,
 } from "@/components/booking/BookingModal";
+import { CapturePartnerBookParams } from "@/components/referral/CapturePartnerBookParams";
 import { CaptureReferralFromUrl } from "@/components/referral/CaptureReferralFromUrl";
+import { useBookingStore } from "@/stores/bookingStore";
 import { BookingStep3Patient } from "@/components/patient/BookingStep3Patient";
 import { cn } from "@/lib/utils";
 
@@ -23,6 +25,7 @@ type Props = {
 export default function PatientBookingFlow({ onComplete, onCancel }: Props) {
   const [step, setStep] = useState(1);
   const [data, setData] = useState<BookingData>(EMPTY_BOOKING);
+  const hideOccupationCadre = useBookingStore((s) => s.hideOccupationInBookingModal);
 
   const updateData = useCallback((updates: Partial<BookingData>) => {
     setData((prev) => ({ ...prev, ...updates }));
@@ -65,6 +68,7 @@ export default function PatientBookingFlow({ onComplete, onCancel }: Props) {
   return (
     <div className="mx-auto max-w-lg pb-8 pt-2">
       <CaptureReferralFromUrl />
+      <CapturePartnerBookParams />
       <div className="mb-6 flex items-center gap-3">
         <button
           type="button"
@@ -106,6 +110,7 @@ export default function PatientBookingFlow({ onComplete, onCancel }: Props) {
             onUpdate={updateData}
             onNext={() => setStep(2)}
             isLoggedIn
+            hideOccupationCadre={hideOccupationCadre}
           />
         )}
         {step === 2 && (

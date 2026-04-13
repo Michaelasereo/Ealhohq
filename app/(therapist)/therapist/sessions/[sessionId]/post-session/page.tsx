@@ -2,11 +2,12 @@
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { Check } from "lucide-react";
+import { Brain, Check } from "lucide-react";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useLayoutEffect, useState } from "react";
 
+import { PsychiatricReferralForm } from "@/components/psychiatry/PsychiatricReferralForm";
 import { NoteGenerationLoader } from "@/components/notes/NoteGenerationLoader";
 import { SoapNoteDisplay, type NoteType } from "@/components/notes/SoapNoteDisplay";
 import { SoapNoteEditor } from "@/components/notes/SoapNoteEditor";
@@ -37,6 +38,11 @@ type SessionCtx = {
     clientId: string;
     professionalType: string | null;
   };
+  psychiatricReferral?: {
+    id: string;
+    clinicalReason: string;
+    status: string;
+  } | null;
 };
 
 async function fetchSessionCtx(sessionId: string): Promise<SessionCtx> {
@@ -78,6 +84,7 @@ function PostSessionInner() {
   const [timedOut, setTimedOut] = useState(false);
   const [editing, setEditing] = useState(manual);
   const [notesReadySplash, setNotesReadySplash] = useState(false);
+  const [showReferral, setShowReferral] = useState(false);
 
   const { data: sessionCtx } = useQuery({
     queryKey: ["therapist-session-ctx", sessionId],
@@ -395,6 +402,27 @@ function PostSessionInner() {
             patientName={sessionCtx.patient.fullName}
             title={`Schedule ${sessionCtx.patient.fullName.split(" ")[0] ?? "client"}'s next session`}
           />
+        </section>
+      ) : null}
+
+      {sessionCtx?.patient.id ? (
+        <section className="mt-6 border-t border-border pt-6">
+          <button
+            type="button"
+            onClick={() => setShowReferral((v) => !v)}
+            className="flex min-h-12 w-full items-center gap-2 text-left text-sm font-medium text-muted-foreground hover:text-foreground"
+          >
+            <Brain className="size-4 shrink-0" strokeWidth={1.5} />
+            {showReferral
+              ? "Hide psychiatric referral"
+              : "Recommend psychiatric assessment"}
+          </button>
+          {showReferral ? (
+            <PsychiatricReferralForm
+              therapySessionId={sessionId}
+              existingReferral={sessionCtx.psychiatricReferral}
+            />
+          ) : null}
         </section>
       ) : null}
     </main>

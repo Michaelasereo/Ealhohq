@@ -4,6 +4,7 @@ import { isAdminUser } from "@/lib/auth/is-admin";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma/client";
 
+import { captureApiError } from "@/lib/sentry/capture";
 type Ctx = { params: Promise<{ bookingId: string }> };
 
 export async function POST(_req: Request, ctx: Ctx) {
@@ -31,6 +32,7 @@ export async function POST(_req: Request, ctx: Ctx) {
     return NextResponse.json({ success: true });
   } catch (e) {
     console.error("admin cancel booking:", e);
+    captureApiError(e, { route: "/admin/bookings/[bookingId]/cancel" });
     return NextResponse.json(
       { error: "Failed to cancel booking" },
       { status: 500 },

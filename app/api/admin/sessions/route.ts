@@ -15,6 +15,7 @@ import { templates } from "@/lib/whatsapp/templates";
 import { therapistPublicLabel } from "@/lib/therapist-display-name";
 import { bookingDateStartToIso, formatWAT, watDayStart } from "@/lib/wat-datetime";
 
+import { captureApiError } from "@/lib/sentry/capture";
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const TIME_RE = /^\d{2}:\d{2}$/;
 
@@ -41,6 +42,7 @@ export async function GET() {
     return NextResponse.json({ success: true, data: rows });
   } catch (e) {
     console.error("admin sessions GET:", e);
+    captureApiError(e, { route: "/admin/sessions" });
     return NextResponse.json(
       { error: "Failed to load sessions" },
       { status: 500 },
@@ -307,6 +309,7 @@ export async function POST(req: Request) {
     });
   } catch (e) {
     console.error("admin sessions POST:", e);
+    captureApiError(e, { route: "/admin/sessions" });
     return NextResponse.json(
       { error: "Failed to create session" },
       { status: 500 },

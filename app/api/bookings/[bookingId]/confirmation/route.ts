@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma/client";
 import { therapistPublicLabel } from "@/lib/therapist-display-name";
 import { bookingDateStartToIso } from "@/lib/wat-datetime";
 
+import { captureApiError } from "@/lib/sentry/capture";
 type Ctx = { params: Promise<{ bookingId: string }> };
 
 export async function GET(_req: Request, ctx: Ctx) {
@@ -60,6 +61,7 @@ export async function GET(_req: Request, ctx: Ctx) {
     });
   } catch (e) {
     console.error("booking confirmation:", e);
+    captureApiError(e, { route: "/bookings/[bookingId]/confirmation" });
     return NextResponse.json(
       { error: "Failed to load booking" },
       { status: 500 },

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma/client";
 
+import { captureApiError } from "@/lib/sentry/capture";
 type Ctx = { params: Promise<{ sessionId: string }> };
 
 /**
@@ -70,6 +71,7 @@ export async function POST(req: Request, ctx: Ctx) {
     return NextResponse.json({ success: true });
   } catch (e) {
     console.error("feedback POST:", e);
+    captureApiError(e, { route: "/sessions/[sessionId]/feedback" });
     return NextResponse.json(
       { success: false, error: "Failed to save feedback" },
       { status: 500 },

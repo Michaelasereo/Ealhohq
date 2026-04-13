@@ -1,11 +1,13 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { Suspense } from "react";
 
 import {
   TherapistCard,
   TherapistCardSkeleton,
 } from "@/components/booking/TherapistCard";
+import { CapturePartnerBookParams } from "@/components/referral/CapturePartnerBookParams";
 import { CaptureReferralFromUrl } from "@/components/referral/CaptureReferralFromUrl";
 
 type TherapistRow = {
@@ -65,6 +67,9 @@ export default function PatientBookPage() {
   return (
     <main className="mx-auto min-h-screen w-full max-w-md p-4">
       <CaptureReferralFromUrl />
+      <Suspense fallback={null}>
+        <CapturePartnerBookParams />
+      </Suspense>
       <h1 className="text-xl font-semibold">Welcome back {greet}</h1>
       <p className="mt-1 text-sm text-muted-foreground">Choose your therapist</p>
 

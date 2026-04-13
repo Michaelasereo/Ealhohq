@@ -10,6 +10,7 @@ import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma/client";
 
+import { captureApiError } from "@/lib/sentry/capture";
 export async function GET() {
   try {
     const supabase = await createClient();
@@ -49,6 +50,7 @@ export async function GET() {
     });
   } catch (e) {
     console.error("admin/partners GET:", e);
+    captureApiError(e, { route: "/admin/partners" });
     return NextResponse.json({ error: "Failed to load partners" }, { status: 500 });
   }
 }
@@ -173,6 +175,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Partner email, code, or slug already exists" }, { status: 409 });
     }
     console.error("admin/partners POST:", e);
+    captureApiError(e, { route: "/admin/partners" });
     return NextResponse.json({ error: "Failed to create partner" }, { status: 500 });
   }
 }

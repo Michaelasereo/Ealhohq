@@ -13,6 +13,7 @@ import { sendTransactionalEmail } from "@/lib/reminders/send-email";
 import { sendWhatsApp } from "@/lib/whatsapp/client";
 import { templates } from "@/lib/whatsapp/templates";
 
+import { captureApiError } from "@/lib/sentry/capture";
 export async function POST(req: Request) {
   try {
     const supabase = await createClient();
@@ -162,6 +163,9 @@ export async function POST(req: Request) {
     });
     if (!sent.success) {
       console.error("Invite therapist email:", sent.error);
+      captureApiError(sent.error ?? new Error("invite email failed"), {
+        route: "/admin/invite/therapist",
+      });
       return NextResponse.json(
         { error: "Therapist created but email failed to send" },
         { status: 502 },
@@ -186,6 +190,7 @@ export async function POST(req: Request) {
     });
   } catch (error) {
     console.error("Invite therapist error:", error);
+    captureApiError(error, { route: "/admin/invite/therapist" });
     return NextResponse.json({ error: "Failed to send invite" }, { status: 500 });
   }
 }

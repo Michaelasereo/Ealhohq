@@ -4,6 +4,7 @@ import { isAdminUser } from "@/lib/auth/is-admin";
 import { findSlaBreachThreads } from "@/lib/chat/admin-sla-cron";
 import { createClient } from "@/lib/supabase/server";
 
+import { captureApiError } from "@/lib/sentry/capture";
 export const runtime = "nodejs";
 
 export async function GET(req: Request) {
@@ -41,6 +42,7 @@ export async function GET(req: Request) {
     });
   } catch (e) {
     console.error("admin/chat/sla:", e);
+    captureApiError(e, { route: "/admin/chat/sla" });
     return NextResponse.json({ error: "Failed" }, { status: 500 });
   }
 }

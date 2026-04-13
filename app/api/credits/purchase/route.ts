@@ -10,6 +10,7 @@ import { ensureRegisteredPatientForUser } from "@/lib/queries/patient";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma/client";
 
+import { captureApiError } from "@/lib/sentry/capture";
 function appUrl(): string | null {
   const u = process.env.NEXT_PUBLIC_APP_URL?.trim();
   return u && u.length > 0 ? u.replace(/\/$/, "") : null;
@@ -116,6 +117,7 @@ export async function POST(req: Request) {
     });
   } catch (e) {
     console.error("credits/purchase:", e);
+    captureApiError(e, { route: "/credits/purchase" });
     return NextResponse.json(
       { success: false, error: "Purchase failed" },
       { status: 500 },

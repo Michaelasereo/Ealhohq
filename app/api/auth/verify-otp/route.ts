@@ -3,6 +3,8 @@ import { z } from "zod";
 
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 
+import { enforceApiRateLimit } from "@/lib/rate-limit/api";
+import { captureApiError } from "@/lib/sentry/capture";
 export const runtime = "nodejs";
 
 const bodySchema = z.object({
@@ -15,6 +17,9 @@ const MAX_ATTEMPTS = 5;
 
 export async function POST(req: Request) {
   try {
+    const limited = await enforceApiRateLimit(req, "auth_verify_otp");
+    if (limited) return limited;
+
     const json = (await req.json()) as unknown;
     const parsed = bodySchema.safeParse(json);
     if (!parsed.success) {
@@ -116,6 +121,7 @@ export async function POST(req: Request) {
     });
   } catch (e) {
     console.error("verify-otp:", e);
+    captureApiError(e, { route: "/auth/verify-otp" });
     return NextResponse.json(
       { success: false, error: "Could not verify code" },
       { status: 500 },

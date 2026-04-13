@@ -6,6 +6,7 @@ import { generateNoteAsync } from "@/lib/notes/generate-note";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma/client";
 
+import { captureApiError } from "@/lib/sentry/capture";
 export async function POST(req: Request) {
   try {
     const supabase = await createClient();
@@ -165,6 +166,7 @@ export async function POST(req: Request) {
     });
   } catch (e) {
     console.error("Session complete error:", e);
+    captureApiError(e, { route: "/session/complete" });
     return NextResponse.json(
       { success: false, error: "Failed to complete session" },
       { status: 500 },

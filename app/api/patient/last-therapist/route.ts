@@ -8,6 +8,7 @@ import { prisma } from "@/lib/prisma/client";
 import { therapistPublicLabel } from "@/lib/therapist-display-name";
 import { addWatDays, watTodayDateString } from "@/lib/wat-datetime";
 
+import { captureApiError } from "@/lib/sentry/capture";
 export async function GET() {
   try {
     const supabase = await createClient();
@@ -83,6 +84,7 @@ export async function GET() {
     });
   } catch (e) {
     console.error("client last-therapist GET:", e);
+    captureApiError(e, { route: "/patient/last-therapist" });
     return NextResponse.json(
       { success: false, error: "Failed to load" },
       { status: 500 },

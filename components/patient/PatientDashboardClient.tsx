@@ -28,6 +28,10 @@ import {
 } from "@/lib/patient/join-eligibility";
 import { createClient } from "@/lib/supabase/client";
 import type { PatientSessionView } from "@/lib/mappers/patient-session";
+import {
+  PsychiatricInvitationBanner,
+  type PsychiatricInvite,
+} from "@/components/patient/PsychiatricInvitationBanner";
 import { PatientMessagingPrivacyCard } from "@/components/patient/PatientMessagingPrivacyCard";
 import { QuickRebookModal } from "@/components/patient/QuickRebookModal";
 import { PatientMessagesTab } from "@/components/patient/PatientMessagesTab";
@@ -59,6 +63,7 @@ type DashboardBookingRow = {
 
 type DashboardNextZone = {
   upcomingSession: DashboardBookingRow | null;
+  psychiatricInvitations: PsychiatricInvite[];
 };
 
 type DashboardRecentZone = {
@@ -306,6 +311,28 @@ export function PatientDashboardClient() {
     enabled: activeTab === "home",
   });
 
+  const partnerMeQ = useQuery({
+    queryKey: ["patient-me"],
+    queryFn: async () => {
+      const r = await fetch("/api/patient/me", { credentials: "include" });
+      const j = (await r.json()) as {
+        success?: boolean;
+        data?: {
+          partnerProgram: {
+            partnerName: string;
+            badgeLabel: string;
+            monthlyCreditsRemaining: number;
+            onboardingStatus: string;
+          } | null;
+        } | null;
+      };
+      if (r.status === 401 || !j.success) return null;
+      return j.data ?? null;
+    },
+    enabled: activeTab === "home",
+    staleTime: 60_000,
+  });
+
   const chatThreadsQ = useQuery({
     queryKey: ["chat-threads"],
     queryFn: async (): Promise<ThreadListItem[]> => {
@@ -514,6 +541,52 @@ export function PatientDashboardClient() {
               <h1 className="text-2xl font-semibold">
                 {greetingWat()}, {dashStats.firstName} 👋
               </h1>
+              {partnerMeQ.data?.partnerProgram ? (
+                <div
+                  className={cn(
+                    "flex flex-wrap items-center gap-2 rounded-xl border px-3 py-2 text-xs",
+                    partnerMeQ.data.partnerProgram.onboardingStatus === "active"
+                      ? "border-emerald-600/25 bg-emerald-50/90 text-emerald-950"
+                      : "border-amber-600/25 bg-amber-50/90 text-amber-950",
+                  )}
+                >
+                  <span className="rounded-full bg-white/80 px-2 py-0.5 font-semibold">
+                    {partnerMeQ.data.partnerProgram.badgeLabel}
+                  </span>
+                  <span className="font-medium">
+                    {partnerMeQ.data.partnerProgram.partnerName}
+                  </span>
+                  {partnerMeQ.data.partnerProgram.onboardingStatus ===
+                  "active" ? (
+                    <span className="text-emerald-900/80">
+                      {partnerMeQ.data.partnerProgram.monthlyCreditsRemaining}{" "}
+                      employer session
+                      {partnerMeQ.data.partnerProgram.monthlyCreditsRemaining ===
+                      1
+                        ? ""
+                        : "s"}{" "}
+                      left this month
+                    </span>
+                  ) : (
+                    <span className="text-amber-900/80">
+                      Finish setup to use employer-covered sessions
+                    </span>
+                  )}
+                </div>
+              ) : null}
+              {homeNextQ.data?.psychiatricInvitations?.length ? (
+                <PsychiatricInvitationBanner
+                  invites={homeNextQ.data.psychiatricInvitations}
+                  onChanged={() => {
+                    void qc.invalidateQueries({
+                      queryKey: ["patient-dashboard", "next"],
+                    });
+                    void qc.invalidateQueries({
+                      queryKey: ["patient-dashboard", "stats"],
+                    });
+                  }}
+                />
+              ) : null}
               {homeNextQ.isPending ? (
                 <Skeleton className="h-36 w-full rounded-2xl" />
               ) : homeNextQ.isError ? (

@@ -92,6 +92,8 @@ type Props = {
   onUpdate: (updates: Partial<BookingData>) => void;
   onNext: () => void;
   isLoggedIn?: boolean;
+  /** When true, skip occupation / cadre question (non-clinician partner links). */
+  hideOccupationCadre?: boolean;
 };
 
 export function BookingStep1({
@@ -99,6 +101,7 @@ export function BookingStep1({
   onUpdate,
   onNext,
   isLoggedIn = false,
+  hideOccupationCadre = false,
 }: Props) {
   const [isAnonymous, setIsAnonymous] = useState(
     isLoggedIn ? false : data.isAnonymous,
@@ -252,31 +255,33 @@ export function BookingStep1({
         </div>
       </div>
 
-      <div>
-        <label className="mb-1.5 block text-sm font-medium text-gray-700">
-          What best describes you?
-          <span className="ml-1 font-normal text-gray-400">(optional)</span>
-        </label>
-        <select
-          {...register("professionalType")}
-          className="w-full cursor-pointer appearance-none rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700 transition-colors focus:border-[#2C3B2D] focus:outline-none"
-          defaultValue=""
-        >
-          <option value="" disabled>
-            Select your role...
-          </option>
-          {PROFESSIONAL_TYPES.map((group) => (
-            <optgroup key={group.group} label={group.group}>
-              {group.options.map((opt) => (
-                <option key={opt} value={opt}>
-                  {opt}
-                </option>
-              ))}
-            </optgroup>
-          ))}
-        </select>
-        <p className="mt-1 text-xs text-gray-400">Helps us match you with the right therapist.</p>
-      </div>
+      {!hideOccupationCadre ? (
+        <div>
+          <label className="mb-1.5 block text-sm font-medium text-gray-700">
+            What best describes you?
+            <span className="ml-1 font-normal text-gray-400">(optional)</span>
+          </label>
+          <select
+            {...register("professionalType")}
+            className="w-full cursor-pointer appearance-none rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700 transition-colors focus:border-[#2C3B2D] focus:outline-none"
+            defaultValue=""
+          >
+            <option value="" disabled>
+              Select your role...
+            </option>
+            {PROFESSIONAL_TYPES.map((group) => (
+              <optgroup key={group.group} label={group.group}>
+                {group.options.map((opt) => (
+                  <option key={opt} value={opt}>
+                    {opt}
+                  </option>
+                ))}
+              </optgroup>
+            ))}
+          </select>
+          <p className="mt-1 text-xs text-gray-400">Helps us match you with the right therapist.</p>
+        </div>
+      ) : null}
 
       {!isLoggedIn ? <div className="border-t border-gray-100" /> : null}
 

@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { getTherapistByProfileId } from "@/lib/queries/patient";
 import { createClient } from "@/lib/supabase/server";
 
+import { captureApiError } from "@/lib/sentry/capture";
 export async function GET() {
   try {
     const supabase = await createClient();
@@ -36,6 +37,7 @@ export async function GET() {
     });
   } catch (e) {
     console.error("therapist/profile/me GET:", e);
+    captureApiError(e, { route: "/therapist/profile/me" });
     return NextResponse.json(
       { error: "Failed to load profile" },
       { status: 500 },

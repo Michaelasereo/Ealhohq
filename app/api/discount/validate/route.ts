@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { computeDiscountForSession } from "@/lib/discount/compute";
 import { prisma } from "@/lib/prisma/client";
 
+import { captureApiError } from "@/lib/sentry/capture";
 export async function POST(req: Request) {
   try {
     const body = (await req.json()) as {
@@ -68,6 +69,7 @@ export async function POST(req: Request) {
     });
   } catch (e) {
     console.error("discount/validate POST:", e);
+    captureApiError(e, { route: "/discount/validate" });
     return NextResponse.json(
       { success: false, error: "Failed to validate code" },
       { status: 500 },

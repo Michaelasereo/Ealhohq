@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { prisma } from "@/lib/prisma/client";
 
+import { captureApiError } from "@/lib/sentry/capture";
 const postSchema = z.object({
   authorName: z.string().min(1).max(200),
   authorRole: z.string().max(200).optional().nullable(),
@@ -59,6 +60,7 @@ export async function GET(req: Request) {
     });
   } catch (e) {
     console.error("reviews GET:", e);
+    captureApiError(e, { route: "/reviews" });
     return NextResponse.json({ error: "Failed to fetch reviews" }, { status: 500 });
   }
 }
@@ -89,6 +91,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: true, data: review.id });
   } catch (e) {
     console.error("reviews POST:", e);
+    captureApiError(e, { route: "/reviews" });
     return NextResponse.json({ error: "Failed to submit review" }, { status: 500 });
   }
 }

@@ -5,6 +5,7 @@ import { isAdminUser } from "@/lib/auth/is-admin";
 import { prisma } from "@/lib/prisma/client";
 import { createClient } from "@/lib/supabase/server";
 
+import { captureApiError } from "@/lib/sentry/capture";
 const patchSchema = z.object({
   contacted: z.boolean(),
 });
@@ -37,6 +38,7 @@ export async function PATCH(
     return NextResponse.json({ success: true, data: updated });
   } catch (e) {
     console.error("admin leads PATCH:", e);
+    captureApiError(e, { route: "/admin/leads/[id]" });
     return NextResponse.json(
       { error: "Failed to update lead" },
       { status: 500 },

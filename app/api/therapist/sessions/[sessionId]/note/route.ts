@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma/client";
 
+import { captureApiError } from "@/lib/sentry/capture";
 type Ctx = { params: Promise<{ sessionId: string }> };
 
 export async function GET(_req: Request, ctx: Ctx) {
@@ -55,6 +56,7 @@ export async function GET(_req: Request, ctx: Ctx) {
     });
   } catch (e) {
     console.error("Therapist note GET:", e);
+    captureApiError(e, { route: "/therapist/sessions/[sessionId]/note" });
     return NextResponse.json(
       { success: false, error: "Failed to fetch note" },
       { status: 500 },
@@ -112,6 +114,7 @@ export async function PUT(req: Request, ctx: Ctx) {
     return NextResponse.json({ success: true });
   } catch (e) {
     console.error("Therapist note PUT:", e);
+    captureApiError(e, { route: "/therapist/sessions/[sessionId]/note" });
     return NextResponse.json(
       { success: false, error: "Failed to update note" },
       { status: 500 },

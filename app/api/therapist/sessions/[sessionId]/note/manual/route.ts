@@ -4,6 +4,7 @@ import { getTherapistByProfileId } from "@/lib/queries/patient";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma/client";
 
+import { captureApiError } from "@/lib/sentry/capture";
 type Ctx = { params: Promise<{ sessionId: string }> };
 
 export async function POST(req: Request, ctx: Ctx) {
@@ -81,6 +82,7 @@ export async function POST(req: Request, ctx: Ctx) {
     return NextResponse.json({ success: true });
   } catch (e) {
     console.error("manual note POST:", e);
+    captureApiError(e, { route: "/therapist/sessions/[sessionId]/note/manual" });
     return NextResponse.json(
       { error: "Failed to save note" },
       { status: 500 },

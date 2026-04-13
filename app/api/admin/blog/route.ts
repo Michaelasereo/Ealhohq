@@ -4,6 +4,7 @@ import { z } from "zod";
 import { requireAdminUser } from "@/lib/auth/require-admin-api";
 import { prisma } from "@/lib/prisma/client";
 
+import { captureApiError } from "@/lib/sentry/capture";
 const createSchema = z.object({
   title: z.string().min(1),
   slug: z.string().min(1).regex(/^[a-z0-9-]+$/),
@@ -35,6 +36,7 @@ export async function GET() {
     return NextResponse.json({ success: true, data: posts });
   } catch (e) {
     console.error("admin blog GET:", e);
+    captureApiError(e, { route: "/admin/blog" });
     return NextResponse.json({ error: "Failed to list posts" }, { status: 500 });
   }
 }
@@ -89,6 +91,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: true, data: post });
   } catch (e) {
     console.error("admin blog POST:", e);
+    captureApiError(e, { route: "/admin/blog" });
     return NextResponse.json({ error: "Failed to create post" }, { status: 500 });
   }
 }

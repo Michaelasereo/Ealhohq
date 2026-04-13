@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma/client";
 import { therapistPublicLabel } from "@/lib/therapist-display-name";
 import { bookingDateStartToIso } from "@/lib/wat-datetime";
 
+import { captureApiError } from "@/lib/sentry/capture";
 const patientHistoryBookingSelect = {
   id: true,
   date: true,
@@ -131,6 +132,7 @@ export async function GET(req: Request) {
     });
   } catch (e) {
     console.error("client history GET:", e);
+    captureApiError(e, { route: "/patient/history" });
     return NextResponse.json(
       { error: "Failed to load history" },
       { status: 500 },

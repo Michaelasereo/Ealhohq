@@ -5,6 +5,7 @@ import { isAdminUser } from "@/lib/auth/is-admin";
 import { prisma } from "@/lib/prisma/client";
 import { createClient } from "@/lib/supabase/server";
 
+import { captureApiError } from "@/lib/sentry/capture";
 export async function PATCH(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -45,6 +46,7 @@ export async function PATCH(
     return NextResponse.json({ success: true, data: { id: updated.id, isActive: updated.isActive } });
   } catch (e) {
     console.error("admin/partners/[id] PATCH:", e);
+    captureApiError(e, { route: "/admin/partners/[id]" });
     return NextResponse.json({ error: "Failed to update partner" }, { status: 500 });
   }
 }

@@ -5,6 +5,7 @@ import { getTherapistByProfileId } from "@/lib/queries/patient";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma/client";
 
+import { captureApiError } from "@/lib/sentry/capture";
 const patchSchema = z
   .object({
     profilePhoto: z.string().url().nullable().optional(),
@@ -61,6 +62,7 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ success: true, data: updated });
   } catch (e) {
     console.error("therapist/profile PATCH:", e);
+    captureApiError(e, { route: "/therapist/profile" });
     return NextResponse.json(
       { error: "Failed to update profile" },
       { status: 500 },

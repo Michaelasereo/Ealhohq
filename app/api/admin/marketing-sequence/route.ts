@@ -5,6 +5,7 @@ import { requireAdminUser } from "@/lib/auth/require-admin-api";
 import { prisma } from "@/lib/prisma/client";
 import { LAST_SEQUENCE_STEP } from "@/lib/email/sequences/burnout-sequence";
 
+import { captureApiError } from "@/lib/sentry/capture";
 const itemSchema = z.object({
   step: z.number().int().min(1).max(LAST_SEQUENCE_STEP),
   subject: z.string().min(1).max(300),
@@ -41,6 +42,7 @@ export async function GET() {
     return NextResponse.json({ success: true, data: rows });
   } catch (e) {
     console.error("admin marketing-sequence GET:", e);
+    captureApiError(e, { route: "/admin/marketing-sequence" });
     return NextResponse.json({ error: "Failed to load sequence settings" }, { status: 500 });
   }
 }
@@ -77,6 +79,7 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ success: true });
   } catch (e) {
     console.error("admin marketing-sequence PATCH:", e);
+    captureApiError(e, { route: "/admin/marketing-sequence" });
     return NextResponse.json({ error: "Failed to save sequence settings" }, { status: 500 });
   }
 }

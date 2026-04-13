@@ -5,6 +5,7 @@ import { getBurnoutFreebieConfig, getFreebiesBucket } from "@/lib/burnout-freebi
 import { prisma } from "@/lib/prisma/client";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 
+import { captureApiError } from "@/lib/sentry/capture";
 const PATH_KEY = "burnout_freebie_storage_path";
 const FILENAME_KEY = "burnout_freebie_email_filename";
 
@@ -27,6 +28,7 @@ export async function GET() {
     });
   } catch (e) {
     console.error("admin burnout-freebie GET:", e);
+    captureApiError(e, { route: "/admin/burnout-freebie" });
     return NextResponse.json({ error: "Failed to load status" }, { status: 500 });
   }
 }
@@ -110,6 +112,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: true, data: { objectPath, emailFilename: safeFilename } });
   } catch (e) {
     console.error("admin burnout-freebie POST:", e);
+    captureApiError(e, { route: "/admin/burnout-freebie" });
     return NextResponse.json({ error: "Upload failed" }, { status: 500 });
   }
 }

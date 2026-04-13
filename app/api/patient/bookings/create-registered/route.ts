@@ -13,6 +13,7 @@ import { prisma } from "@/lib/prisma/client";
 import { createClient } from "@/lib/supabase/server";
 import { watDayStart } from "@/lib/wat-datetime";
 
+import { captureApiError } from "@/lib/sentry/capture";
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const TIME_RE = /^\d{2}:\d{2}$/;
 
@@ -146,6 +147,7 @@ export async function POST(req: Request) {
           );
         }
         console.error("create-registered credits:", e);
+    captureApiError(e, { route: "/patient/bookings/create-registered" });
         return NextResponse.json(
           { success: false, error: "Could not complete booking with credits" },
           { status: 500 },
@@ -159,6 +161,7 @@ export async function POST(req: Request) {
     });
   } catch (e) {
     console.error("client bookings/create-registered POST:", e);
+    captureApiError(e, { route: "/patient/bookings/create-registered" });
     return NextResponse.json(
       { success: false, error: "Failed to create booking" },
       { status: 500 },

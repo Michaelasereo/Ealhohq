@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma/client";
 import { therapistPublicLabel } from "@/lib/therapist-display-name";
 
+import { captureApiError } from "@/lib/sentry/capture";
 export const runtime = "nodejs";
 
 export async function GET(req: Request) {
@@ -131,6 +132,7 @@ export async function GET(req: Request) {
     });
   } catch (e) {
     console.error("admin/chat/threads:", e);
+    captureApiError(e, { route: "/admin/chat/threads" });
     return NextResponse.json({ error: "Failed" }, { status: 500 });
   }
 }

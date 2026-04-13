@@ -10,6 +10,7 @@ import { chargeSessionRateNgn } from "@/lib/referral/pricing";
 import { therapistPublicLabel } from "@/lib/therapist-display-name";
 import { calculatePackagePrice, getPackageOption } from "@/lib/packages/config";
 
+import { captureApiError } from "@/lib/sentry/capture";
 function parseMetadata(raw: unknown): Record<string, string> {
   if (!raw) return {};
   if (typeof raw === "string") {
@@ -219,6 +220,7 @@ export async function POST(req: Request) {
     });
   } catch (e) {
     console.error("Payment verify error:", e);
+    captureApiError(e, { route: "/payment/verify" });
     return NextResponse.json(
       { success: false, error: "Failed to verify payment" },
       { status: 500 },

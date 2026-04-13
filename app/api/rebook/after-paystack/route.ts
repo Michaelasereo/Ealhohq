@@ -9,6 +9,7 @@ import { finalizeTherapyPayment } from "@/lib/payment/finalize-therapy-payment";
 import { verifyPaystackForBooking } from "@/lib/payment/verify-paystack-reference";
 import { prisma } from "@/lib/prisma/client";
 
+import { captureApiError } from "@/lib/sentry/capture";
 const schema = z
   .object({
     requestId: z.string().uuid(),
@@ -75,6 +76,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: true, data: { bookingId } });
   } catch (e) {
     console.error("rebook after-paystack:", e);
+    captureApiError(e, { route: "/rebook/after-paystack" });
     const msg = e instanceof Error ? e.message : "";
     if (msg === "INVALID_REQUEST" || msg === "ALREADY_CONFIRMED") {
       return NextResponse.json({ error: "Invalid invitation" }, { status: 400 });

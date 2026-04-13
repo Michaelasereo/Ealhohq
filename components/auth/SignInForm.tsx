@@ -122,6 +122,12 @@ export function SignInForm({
       setLoading(false);
       return;
     }
+    if (role === "psychiatrist") {
+      router.replace("/psychiatrist/sessions");
+      router.refresh();
+      setLoading(false);
+      return;
+    }
     router.replace("/dashboard");
     router.refresh();
     setLoading(false);

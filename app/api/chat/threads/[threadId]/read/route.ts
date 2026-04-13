@@ -4,6 +4,7 @@ import { resolveAppRole } from "@/lib/auth/resolve-app-role";
 import { prisma } from "@/lib/prisma/client";
 import { createClient } from "@/lib/supabase/server";
 
+import { captureApiError } from "@/lib/sentry/capture";
 export const runtime = "nodejs";
 
 type Ctx = { params: Promise<{ threadId: string }> };
@@ -63,6 +64,7 @@ export async function POST(_req: Request, ctx: Ctx) {
     });
   } catch (e) {
     console.error("chat read POST:", e);
+    captureApiError(e, { route: "/chat/threads/[threadId]/read" });
     return NextResponse.json({ error: "Failed" }, { status: 500 });
   }
 }

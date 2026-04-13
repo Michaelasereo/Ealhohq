@@ -5,6 +5,7 @@ import { isAdminUser } from "@/lib/auth/is-admin";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma/client";
 
+import { captureApiError } from "@/lib/sentry/capture";
 type Ctx = { params: Promise<{ patientId: string }> };
 
 export async function PUT(_req: Request, ctx: Ctx) {
@@ -56,6 +57,7 @@ export async function PUT(_req: Request, ctx: Ctx) {
     return NextResponse.json({ success: true });
   } catch (e) {
     console.error("Deactivate client:", e);
+    captureApiError(e, { route: "/admin/patients/[patientId]/deactivate" });
     return NextResponse.json(
       { error: "Failed to deactivate patient" },
       { status: 500 },

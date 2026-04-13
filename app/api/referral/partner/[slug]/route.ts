@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma/client";
 
+import { captureApiError } from "@/lib/sentry/capture";
 export async function GET(
   _req: Request,
   { params }: { params: Promise<{ slug: string }> },
@@ -26,6 +27,7 @@ export async function GET(
     });
   } catch (e) {
     console.error("referral/partner/[slug] GET:", e);
+    captureApiError(e, { route: "/referral/partner/[slug]" });
     return NextResponse.json({ error: "Failed to fetch partner" }, { status: 500 });
   }
 }

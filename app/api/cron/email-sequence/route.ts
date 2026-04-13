@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { runEmailSequence } from "@/lib/email/sequences/run-email-sequence";
 
+import { captureApiError } from "@/lib/sentry/capture";
 export async function GET(req: Request) {
   const auth = req.headers.get("authorization");
   if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
@@ -13,6 +14,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ success: true, data });
   } catch (error) {
     console.error("Sequence cron error:", error);
+    captureApiError(error, { route: "/cron/email-sequence" });
     return NextResponse.json({ error: "Sequence job failed" }, { status: 500 });
   }
 }

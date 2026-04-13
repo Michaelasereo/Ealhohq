@@ -5,6 +5,7 @@ import { z } from "zod";
 import { requireAdminUser } from "@/lib/auth/require-admin-api";
 import { prisma } from "@/lib/prisma/client";
 
+import { captureApiError } from "@/lib/sentry/capture";
 const patchSchema = z.object({
   title: z.string().min(1).optional(),
   slug: z.string().min(1).regex(/^[a-z0-9-]+$/).optional(),
@@ -39,6 +40,7 @@ export async function GET(_req: Request, ctx: Ctx) {
     return NextResponse.json({ success: true, data: post });
   } catch (e) {
     console.error("admin blog id GET:", e);
+    captureApiError(e, { route: "/admin/blog/[id]" });
     return NextResponse.json({ error: "Failed to load post" }, { status: 500 });
   }
 }
@@ -100,6 +102,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
     return NextResponse.json({ success: true, data: post });
   } catch (e) {
     console.error("admin blog PATCH:", e);
+    captureApiError(e, { route: "/admin/blog/[id]" });
     return NextResponse.json({ error: "Failed to update post" }, { status: 500 });
   }
 }
@@ -114,6 +117,7 @@ export async function DELETE(_req: Request, ctx: Ctx) {
     return NextResponse.json({ success: true });
   } catch (e) {
     console.error("admin blog DELETE:", e);
+    captureApiError(e, { route: "/admin/blog/[id]" });
     return NextResponse.json({ error: "Failed to delete post" }, { status: 500 });
   }
 }

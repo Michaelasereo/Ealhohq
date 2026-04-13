@@ -6,6 +6,7 @@ import { isAdminUser } from "@/lib/auth/is-admin";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma/client";
 
+import { captureApiError } from "@/lib/sentry/capture";
 const createSchema = z
   .object({
     code: z.string().min(2).max(40),
@@ -53,6 +54,7 @@ export async function GET() {
     return NextResponse.json({ success: true, data });
   } catch (e) {
     console.error("admin/discounts GET:", e);
+    captureApiError(e, { route: "/admin/discounts" });
     return NextResponse.json(
       { error: "Failed to load discount codes" },
       { status: 500 },
@@ -143,6 +145,7 @@ export async function POST(req: Request) {
       );
     }
     console.error("admin/discounts POST:", e);
+    captureApiError(e, { route: "/admin/discounts" });
     return NextResponse.json(
       { error: "Failed to create discount code" },
       { status: 500 },

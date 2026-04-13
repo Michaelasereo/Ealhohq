@@ -4,6 +4,7 @@ import { z } from "zod";
 import { requireAdminUser } from "@/lib/auth/require-admin-api";
 import { prisma } from "@/lib/prisma/client";
 
+import { captureApiError } from "@/lib/sentry/capture";
 const patchSchema = z.union([
   z.object({
     key: z.string().min(1),
@@ -49,6 +50,7 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ success: true });
   } catch (e) {
     console.error("admin site-config PATCH:", e);
+    captureApiError(e, { route: "/admin/site-config" });
     return NextResponse.json({ error: "Failed to update config" }, { status: 500 });
   }
 }

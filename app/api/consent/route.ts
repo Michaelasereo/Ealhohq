@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { recordConsentRecords } from "@/lib/consents/record-consent-server";
 
+import { captureApiError } from "@/lib/sentry/capture";
 export const runtime = "nodejs";
 
 export async function POST(req: Request) {
@@ -33,6 +34,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: true });
   } catch (e) {
     console.error("consent POST:", e);
+    captureApiError(e, { route: "/consent" });
     return NextResponse.json(
       { error: "Failed to record consent" },
       { status: 500 },

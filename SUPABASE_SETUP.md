@@ -102,3 +102,13 @@ Ensure these are set (e.g. `.env.local`):
 - `RESEND_FROM_EMAIL` (optional; defaults in app code if unset)
 - `ANTHROPIC_API_KEY` (for automated chat safety scanning)
 - `NEXT_PUBLIC_APP_URL` (WhatsApp deep links to `/messages` and `/therapist/messages`)
+
+## Step 8 — Storage: super referral partner logos (`partner-logos`)
+
+Admin uploads logos from **Partners → Add partner** (not a raw URL). The API uploads with the **service role** to bucket **`partner-logos`**.
+
+1. In **Supabase → SQL Editor**, run `supabase/migrations/008_partner_logos_bucket.sql` from this repo (creates the bucket and a public read policy).
+2. Or manually: **Storage → New bucket** → name **`partner-logos`** → **Public bucket** → allowed MIME types JPG / PNG / WebP, max size 5MB.
+3. Ensure **`SUPABASE_SERVICE_ROLE_KEY`** is set in the environment that runs Next.js API routes.
+
+Logos are served via the existing Next.js image config for `*.supabase.co` public object URLs.

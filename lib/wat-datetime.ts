@@ -12,6 +12,28 @@ export function minutesUntil(startIso: string) {
   return Math.floor((new Date(startIso).getTime() - Date.now()) / (1000 * 60));
 }
 
+/** Calendar day of month (1–31) in Africa/Lagos. */
+export function watCalendarDay(now = new Date()): number {
+  return Number(
+    new Intl.DateTimeFormat("en-GB", {
+      timeZone: "Africa/Lagos",
+      day: "numeric",
+    }).format(now),
+  );
+}
+
+/** Current month as YYYY-MM in West Africa Time (pool / allocation keys). */
+export function watCurrentMonthYm(now = new Date()): string {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Africa/Lagos",
+    year: "numeric",
+    month: "2-digit",
+  }).formatToParts(now);
+  const y = parts.find((p) => p.type === "year")?.value ?? "1970";
+  const m = parts.find((p) => p.type === "month")?.value ?? "01";
+  return `${y}-${m}`;
+}
+
 /** Today's calendar date YYYY-MM-DD in WAT. */
 export function watTodayDateString(now = new Date()): string {
   return new Intl.DateTimeFormat("en-CA", {

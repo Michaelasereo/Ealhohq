@@ -12,6 +12,7 @@ import { prisma } from "@/lib/prisma/client";
 import { emailMarkLogoImg } from "@/lib/emails/partials";
 import { sendTransactionalEmail } from "@/lib/reminders/send-email";
 
+import { captureApiError } from "@/lib/sentry/capture";
 function escapeHtml(s: string): string {
   return s
     .replace(/&/g, "&amp;")
@@ -114,6 +115,7 @@ export async function POST(req: Request) {
     });
   } catch (error) {
     console.error("Lead capture error:", error);
+    captureApiError(error, { route: "/leads/clinic" });
 
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
       if (error.code === "P2021") {

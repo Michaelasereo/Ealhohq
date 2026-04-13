@@ -4,6 +4,7 @@ import { Resend } from "resend";
 import { prisma } from "@/lib/prisma/client";
 import { buildEmailForStep } from "@/lib/email/sequences/burnout-sequence";
 
+import { captureApiError } from "@/lib/sentry/capture";
 const resend = new Resend(process.env.RESEND_API_KEY);
 const FROM_EMAIL = "Michael from Ealho <hello@ealho.com>";
 
@@ -81,6 +82,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Subscribe error:", error);
+    captureApiError(error, { route: "/subscribe" });
     return NextResponse.json(
       { error: "Something went wrong. Please try again." },
       { status: 500 },

@@ -5,6 +5,7 @@ import { getBurnoutFreebieConfig, getFreebiesBucket } from "@/lib/burnout-freebi
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { sendBurnoutGuideEmail } from "@/lib/reminders/send-email";
 
+import { captureApiError } from "@/lib/sentry/capture";
 export const dynamic = "force-dynamic";
 
 const bodySchema = z.object({
@@ -79,6 +80,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: true });
   } catch (e) {
     console.error("burnout-guide request:", e);
+    captureApiError(e, { route: "/burnout-guide/request" });
     return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
   }
 }

@@ -5,6 +5,7 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma/client";
 
+import { captureApiError } from "@/lib/sentry/capture";
 const bodySchema = z.object({
   fullName: z.string().min(1),
   phone: z.string().min(1),
@@ -127,6 +128,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: true, data: { id: therapist.id } });
   } catch (e) {
     console.error("therapist/complete-registration:", e);
+    captureApiError(e, { route: "/therapist/complete-registration" });
     return NextResponse.json(
       { error: "Could not save therapist application" },
       { status: 500 },

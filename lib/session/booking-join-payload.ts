@@ -24,6 +24,7 @@ export function toJoinPayload(
     therapist: TherapyTherapist & { profile: SharedProfile };
     patient: { profileId: string | null } | null;
     session: TherapySession | null;
+    psychiatricSession?: { psychiatrist: { name: string } } | null;
   },
 ): SessionJoinPayload | null {
   if (!booking.session) return null;
@@ -35,10 +36,15 @@ export function toJoinPayload(
     return null;
   }
 
+  const psychName = booking.psychiatricSession?.psychiatrist?.name;
+  const therapistName = psychName
+    ? `Dr ${psychName}`
+    : therapistPublicLabel(booking.therapist.profile.fullName);
+
   return {
     bookingId: booking.id,
     sessionId: booking.session.id,
-    therapistName: therapistPublicLabel(booking.therapist.profile.fullName),
+    therapistName,
     therapistPhoto: booking.therapist.profilePhoto,
     date: booking.date.toISOString(),
     startTime: booking.startTime,

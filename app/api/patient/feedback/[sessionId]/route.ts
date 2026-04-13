@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma/client";
 import { therapistPublicLabel } from "@/lib/therapist-display-name";
 
+import { captureApiError } from "@/lib/sentry/capture";
 type Ctx = { params: Promise<{ sessionId: string }> };
 
 export async function GET(_req: Request, ctx: Ctx) {
@@ -59,6 +60,7 @@ export async function GET(_req: Request, ctx: Ctx) {
     });
   } catch (e) {
     console.error("client feedback GET:", e);
+    captureApiError(e, { route: "/patient/feedback/[sessionId]" });
     return NextResponse.json(
       { error: "Failed to check feedback" },
       { status: 500 },
@@ -136,6 +138,7 @@ export async function POST(req: Request, ctx: Ctx) {
     return NextResponse.json({ success: true });
   } catch (e) {
     console.error("client feedback POST:", e);
+    captureApiError(e, { route: "/patient/feedback/[sessionId]" });
     return NextResponse.json(
       { error: "Failed to save feedback" },
       { status: 500 },

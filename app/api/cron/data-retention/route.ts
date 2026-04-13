@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { runDataRetentionCron } from "@/lib/chat/data-retention-cron";
 
+import { captureApiError } from "@/lib/sentry/capture";
 export const runtime = "nodejs";
 
 export async function GET(req: Request) {
@@ -16,6 +17,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ success: true, ...result });
   } catch (e) {
     console.error("cron data-retention:", e);
+    captureApiError(e, { route: "/cron/data-retention" });
     return NextResponse.json({ error: "Cron failed" }, { status: 500 });
   }
 }

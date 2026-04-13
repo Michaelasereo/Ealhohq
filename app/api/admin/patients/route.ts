@@ -4,6 +4,7 @@ import { isAdminUser } from "@/lib/auth/is-admin";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma/client";
 
+import { captureApiError } from "@/lib/sentry/capture";
 export async function GET() {
   try {
     const supabase = await createClient();
@@ -27,6 +28,7 @@ export async function GET() {
     return NextResponse.json({ success: true, data: patients });
   } catch (e) {
     console.error("admin clients list GET:", e);
+    captureApiError(e, { route: "/admin/patients" });
     return NextResponse.json(
       { error: "Failed to load patients" },
       { status: 500 },

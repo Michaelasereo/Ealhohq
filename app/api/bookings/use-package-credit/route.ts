@@ -9,6 +9,7 @@ import { prisma } from "@/lib/prisma/client";
 import { createClient } from "@/lib/supabase/server";
 import { watDayStart } from "@/lib/wat-datetime";
 
+import { captureApiError } from "@/lib/sentry/capture";
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const TIME_RE = /^\d{2}:\d{2}$/;
 
@@ -127,6 +128,7 @@ export async function POST(req: Request) {
     });
   } catch (e) {
     console.error("bookings/use-package-credit POST:", e);
+    captureApiError(e, { route: "/bookings/use-package-credit" });
     return NextResponse.json(
       { success: false, error: "Failed to book with package credit" },
       { status: 500 },

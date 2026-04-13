@@ -6,6 +6,7 @@ import { isAdminUser } from "@/lib/auth/is-admin";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma/client";
 
+import { captureApiError } from "@/lib/sentry/capture";
 export const runtime = "nodejs";
 
 const bodySchema = z
@@ -72,6 +73,7 @@ export async function POST(req: Request, ctx: Ctx) {
     return NextResponse.json({ success: true, data: { id: messageId } });
   } catch (e) {
     console.error("admin/chat/flagged/resolve:", e);
+    captureApiError(e, { route: "/admin/chat/flagged/[messageId]/resolve" });
     return NextResponse.json({ error: "Failed" }, { status: 500 });
   }
 }

@@ -15,6 +15,8 @@ import { prisma } from "@/lib/prisma/client";
 import { chargeSessionRateNgn } from "@/lib/referral/pricing";
 import { calculatePackagePrice, getPackageOption } from "@/lib/packages/config";
 
+import { enforceApiRateLimit } from "@/lib/rate-limit/api";
+import { captureApiError } from "@/lib/sentry/capture";
 function appUrl(): string | null {
   const u = process.env.NEXT_PUBLIC_APP_URL?.trim();
   return u && u.length > 0 ? u.replace(/\/$/, "") : null;
@@ -22,6 +24,9 @@ function appUrl(): string | null {
 
 export async function POST(req: Request) {
   try {
+    const limited = await enforceApiRateLimit(req, "payment_initialize");
+    if (limited) return limited;
+
     const base = appUrl();
     if (!base) {
       return NextResponse.json(
@@ -121,11 +126,13 @@ export async function POST(req: Request) {
             void sendTherapyBookingPaidNotifications(out.booking).catch(
               (err) => {
                 console.error("Therapy booking paid notifications:", err);
+    captureApiError(err, { route: "/payment/initialize" });
               },
             );
           }
         } catch (e) {
           console.error("Free discount finalize:", e);
+    captureApiError(e, { route: "/payment/initialize" });
           return NextResponse.json(
             {
               success: false,
@@ -198,7 +205,16 @@ export async function POST(req: Request) {
         { status: 404 },
       );
     }
-    const rate = chargeSessionRateNgn(bookingAfterDisc);
+
+    const psychCtx = await prisma.psychiatricSession.findUnique({
+      where: { bookingId },
+      include: { psychiatrist: true },
+    });
+
+    const rate =
+      bookingAfterDisc.sessionType === "psychiatric_assessment" && psychCtx
+        ? Math.round(Number(psychCtx.psychiatrist.sessionRate))
+        : chargeSessionRateNgn(bookingAfterDisc);
     const packagePricing = calculatePackagePrice(rate, packageOption);
     const discAmt =
       bookingAfterDisc.discountAmount != null
